@@ -261,6 +261,4 @@ Reference contract addresses (X Layer mainnet) are documented in `src/config/env
 
 ## License
 
-`package.json` currently declares `"license": "MIT"`, but **no `LICENSE` file exists** in this repository. That value came from the original project scaffold — it was not an explicit licensing decision made during QuorixASP development.
-
-**Please confirm** whether MIT (or another license) is what you want. A `LICENSE` file will only be added after you confirm.
+MIT — see [LICENSE](LICENSE).
