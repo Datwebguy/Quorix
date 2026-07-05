@@ -1,138 +1,266 @@
 # QuorixASP
 
-Production-grade Agent Service Provider (ASP) broker engine built for **OKX.AI**, inspired by Virtuals Protocol’s Agent Commerce Protocol (ACP).
+**QuorixASP** is an autonomous Agent Service Provider (ASP) broker for [OKX.AI](https://www.okx.ai)'s agent marketplace. It discovers live public tasks, evaluates SLA terms, audits counterparty reputation, exposes metered A2MCP tools for other agents, and provides an operator console for monitoring broker activity.
 
-QuorixASP acts as an autonomous deal broker for agent-to-agent (A2A) commerce on the **X Layer** network. It tracks marketplace task lists, audits client agent reputations, handles SLA terms negotiations, monitors escrow payment locks, submits cryptographic proofs-of-work, handles disputes with evaluation bounties, and processes instant pay-per-call A2MCP requests.
+Built for the **OKX AI Genesis Hackathon** (2026). This repository is the broker daemon, web console, and MCP tool surface.
+
+**Registered OKX.AI agent ID:** `#4187` (QuorixASP ASP identity). Service listing and approval status are managed through OKX.AI's agent identity flow (`onchainos agent activate`, etc.) and are independent of this codebase running locally.
+
+**GitHub repository:** [github.com/Datwebguy/Quorix](https://github.com/Datwebguy/Quorix) — the repo is named **Quorix** (shorter GitHub slug). The product, UI, and ASP identity are branded **QuorixASP** throughout.
 
 ---
 
-## Repository Skeleton
+## What it does
+
+| Capability | How it works today |
+|------------|-------------------|
+| **Live task discovery** | Wraps official `onchainos agent task-search` and `recommend-task` against the real OKX.AI marketplace API (`okx.ai/tasks`) |
+| **Capability matching** | Scores tasks against keywords relevant to ASP brokerage in `SemanticMatcher` (SLA, marketplace, negotiation, etc.) |
+| **SLA negotiation** | `NegotiationEngine` accepts, counters, or declines proposals by budget and timeline rules |
+| **Reputation auditing** | Reads X Layer event logs via `ReputationScorer` (X402Rating / TaskManager history) for trust signals |
+| **Escrow monitoring** | Reads TaskManager contract state via **viem**; can submit writes through **Onchain OS CLI** (`wallet contract-call`) without holding private keys locally |
+| **A2MCP tools** | HTTP JSON-RPC MCP surface (`/api/mcp/*`) with six registered tools (reputation, escrow, negotiation, marketplace match, proof verify, utility) |
+| **Operator console** | `dashboard.html` — task feed, negotiation panel, reputation audit, optional developer MCP invoke UI |
+| **Admin log stream** | `admin.html` — gated behind `ADMIN_PASSWORD`, separate from the operator login flow |
+
+**Important:** For tasks discovered on the live OKX.AI marketplace, settlement and payment run on **OKX.AI infrastructure**. QuorixASP tracks deals locally and surfaces marketplace data via CLI. It does not replace OKX's backend escrow for production marketplace jobs.
+
+---
+
+## Engineering pivot (documented honestly)
+
+Early development targeted a **hackathon reference TaskManager contract** on X Layer (`0x599e…E01D`) — scanning `TaskCreated` logs and calling `createTask` directly.
+
+That path revealed a concrete finding:
+
+> The reference contract had **zero real marketplace activity** (`getTaskCount() === 0`). It is **not** what the live OKX.AI task board uses.
+
+Production discovery was rebuilt around the **official Onchain OS CLI**:
+
+```bash
+onchainos agent task-search ...
+onchainos agent recommend-task --agent-id <AGENT_ID>
+```
+
+The reference on chain scanner remains in `src/discovery/marketplaceReference.ts` as a **hackathon competency demo** only. The dashboard task feed and MCP `match_market_tasks` tool use the CLI based path in `src/discovery/marketplace.ts`.
+
+---
+
+## Architecture
 
 ```
 QuorixASP/
-├── package.json            # Script definitions and dependency manifests
-├── tsconfig.json           # Compiler configuration for CommonJS modules
-├── README.md               # Onboarding and command documentation
-└── src/
-    ├── index.ts            # Entrypoint (starts both A2A loop and A2MCP server)
-    ├── config/
-    │   └── env.ts          # Environmental variables, rules, and X Layer RPCs
-    ├── core/
-    │   └── orchestrator.ts # Lifecycle state machine (matching, reputation, escrow, payout, ratings)
-    ├── discovery/
-    │   └── matching.ts     # Semantic keyword task capability matcher
-    ├── escrow/
-    │   └── contract.ts     # EVM adapter interface via viem + Onchain OS CLI calls for writes
-    ├── mcp/
-    │   └── server.ts       # Model Context Protocol stdio tools server (rate limits, parameter filtering)
-    ├── negotiation/
-    │   ├── engine.ts       # SLA pricing logic & negotiation strategy module
-    │   └── schemas.ts      # Strict Zod schema validators
-    └── reputation/
-        └── scorer.ts       # Blockchain logs ratings auditor (scans X Layer events)
+├── index.html, login.html, dashboard.html, admin.html   # Static operator UI
+├── assets/logo/                                         # Brand favicon set
+├── src/
+│   ├── index.ts              # Express daemon: APIs, session registry, static files, startup
+│   ├── config/env.ts         # Environment loading and X Layer defaults
+│   ├── core/orchestrator.ts  # In memory job lifecycle state machine
+│   ├── discovery/
+│   │   ├── marketplace.ts          # Production feed — CLI task-search / recommend-task
+│   │   ├── marketplaceReference.ts # Reference only on chain log scanner (hackathon demo)
+│   │   └── matching.ts             # Semantic keyword scorer for ASP capabilities
+│   ├── onchainos/
+│   │   ├── exec.ts                 # execFile only CLI spawn + isolated ONCHAINOS_HOME
+│   │   └── taskMarketplace.ts      # task-search, recommend-task, agent ID resolution
+│   ├── negotiation/
+│   │   ├── engine.ts               # SLA accept / counter / decline rules
+│   │   └── schemas.ts              # Task and proposal types (Zod)
+│   ├── reputation/scorer.ts        # On chain reputation log analysis
+│   ├── escrow/contract.ts          # viem reads; Onchain OS CLI writes to TaskManager
+│   ├── mcp/
+│   │   ├── server.ts               # MCP invoke handler and rate limiting
+│   │   ├── registry.ts             # Tool definitions and input schemas
+│   │   ├── tools.ts                # Tool execution wiring
+│   │   ├── responses.ts            # Structured MCP response helpers
+│   │   └── okxIntegration.ts       # ASP service registration guidance / manifest
+│   ├── blockchain/
+│   │   ├── logScan.ts              # Chunked eth_getLogs for large lookbacks
+│   │   └── rpcTransport.ts         # RPC error classification and retry hints
+│   └── utils/logDedupe.ts          # Suppresses repeated error spam in logs
+├── scripts/                  # Local dev helpers (login, probes, logo generation)
+├── tests/broker.test.ts      # Broker unit tests
+└── .env.example              # Required environment template (copy to .env)
+```
+
+### Request flow (simplified)
+
+```
+Browser console ──► Express (index.ts) ──► MarketplaceScanner
+                                              │
+                                              ├─► execFile(onchainos agent task-search)
+                                              ├─► NegotiationEngine / Orchestrator
+                                              ├─► ReputationScorer (viem reads)
+                                              └─► XLayerClient (viem reads + CLI writes)
+
+External agents ──► /api/mcp/invoke ──► QuorixMcpServer ──► same core modules
 ```
 
 ---
 
-## Technical Architecture & Onchain OS Integration
+## Security and isolation
 
-QuorixASP utilizes a hybrid execution pattern designed to maximize security:
-*   **Reads (Viem & Public Client)**: All checks (verifying escrow locks, parsing reputation ratings) are executed via light, fast JSON-RPC reads on the X Layer network.
-*   **Writes (Onchain OS CLI Integration)**: QuorixASP never holds private keys. All state-changing write transactions (creating escrow, releasing payment, filing a dispute, submitting rating) are delegated to the `onchainos` CLI. It spawns the command:
-    ```bash
-    onchainos wallet contract-call --to <escrow_address> --chain x-layer --input-data <hex_calldata> [--amt <native_value_wei>]
-    ```
-    This redirects the signing action to the secure Onchain OS Agentic Wallet.
-
----
-
-## Onchain OS Registration Steps
-
-To link this codebase to the **OKX.AI** marketplace, run the following commands in your agent console:
-
-1. **Install Onchain OS Skills**:
-   ```bash
-   npx skills add okx/onchainos-skills --yes -g
-   ```
-   *(Be sure to restart/open a new session after this completes)*
-
-2. **Log in to Agentic Wallet**:
-   ```
-   Prompt: Log in to Agentic Wallet on Onchain OS with my email
-   ```
-
-3. **Register as A2A Broker**:
-   ```
-   Prompt: Help me register an A2A ASP on OKX.AI using OKX Agent Identity from Onchain OS
-   ```
-   *Provide details when prompted:*
-   *   **Name**: `QuorixASP Broker`
-   *   **Description**: `Autonomous agent broker for A2A commerce. Discovers tasks, negotiates terms, monitors escrow settlements, and submits verified proofs-of-work.`
-   *   **Service List**: `[1] Task Discovery & Matching, [2] Term Negotiation, [3] X Layer Escrow Management, [4] Agent Reputation Auditing`
-   *   **Default Pricing**: `1% transaction brokering fee settled dynamically on X Layer`
-
-4. **Register as A2MCP Service**:
-   ```
-   Prompt: Help me register an A2MCP ASP on OKX.AI using OKX Agent Identity from Onchain OS
-   ```
-   *Provide details when prompted:*
-   *   **Service Name**: `Quorix Reputation API`
-   *   **Description**: `Pay-per-call on-chain reputation logs lookup for agents on X Layer.`
-   *   **Price**: `0.005 OKB per call`
-   *   **Endpoint**: `https://api.quorix.io/mcp/reputation`
-
-5. **Request Marketplace Listing**:
-   ```
-   Prompt: Help me list my ASP on OKX.AI using Onchain OS
-   ```
+| Property | Implementation |
+|----------|----------------|
+| **No shell injection** | All `onchainos` invocations use `child_process.execFile` with argument arrays — never `exec` or shell string interpolation (`src/onchainos/exec.ts`, `src/escrow/contract.ts`, `src/index.ts`) |
+| **Per operator session isolation** | Dashboard login maps each wallet to `%TEMP%/okx-cli-sessions/<hash>/` with its own `ONCHAINOS_HOME`, `USERPROFILE`, `APPDATA` (`buildIsolatedCliEnv`) |
+| **ASP daemon session** | Broker process sets `ONCHAINOS_HOME` from `ONCHAINOS_CLI_SESSION` at startup — separate from other operators' sessions |
+| **Admin gate** | Server **refuses to start** without `ADMIN_PASSWORD`. Admin routes and `admin.html` require password auth — no default password |
+| **Write safety checks** | Contract addresses and calldata validated before CLI spawn; USDC `approve` skipped when allowance is already sufficient; `createTask` verifies `getTaskCount()` increment after submit |
+| **Secrets excluded from git** | `.env`, session JSON, `scratch/`, logs, and `dist/` are in `.gitignore` |
 
 ---
 
-## Setup & Running Locally
+## Tech stack
 
-### 1. Install Dependencies
+From `package.json` (runtime dependencies):
+
+| Package | Role |
+|---------|------|
+| **express** ^5.2 | HTTP API and static file server |
+| **viem** ^2.21 | X Layer JSON-RPC reads and ABI encoding |
+| **@modelcontextprotocol/sdk** ^1.0 | MCP tool schema/types |
+| **@okxweb3/a2a-node** ^0.1 | OKX A2A node integration |
+| **zod** ^3.23 | Request/schema validation |
+| **dotenv** ^16.4 | `.env` loading |
+| **cors** ^2.8 | CORS for local dashboard |
+| **typescript** / **ts-node** | Build and dev execution |
+
+External requirement: **Onchain OS CLI** (`onchainos`) installed via [okx/onchainos-skills](https://github.com/okx/onchainos-skills) and an authenticated Agentic Wallet session.
+
+---
+
+## Setup
+
+### 1. Prerequisites
+
+- Node.js 20+
+- Onchain OS CLI (`onchainos`) on your PATH (`~/.local/bin/onchainos`)
+- OKX Agentic Wallet login and a registered ASP identity on OKX.AI
+
+### 2. Install
+
 ```bash
+git clone https://github.com/Datwebguy/Quorix.git
+cd Quorix
 npm install
+cp .env.example .env
+# Edit .env with your real values — never commit .env
 ```
 
-### 2. Configure Environment
-Create a `.env` file in the project root:
-```env
-X_LAYER_RPC_URL=https://rpc.xlayer.tech
-ESCROW_CONTRACT_ADDRESS=0xOfficialOKXNativeEscrowAddress
-POLL_INTERVAL_MS=15000
-MAX_POLL_ATTEMPTS=20
-PORT=3000
-```
-*Note: To query the official Escrow contract address from Onchain OS registry, run: `onchainos registry get --name agent-escrow-a2a --chain x-layer`*
+### 3. Run
 
-### 3. Run Simulations
-Starts the stdio A2MCP server and the A2A polling sweep:
+**Production (build + start):**
+
+```bash
+npm run start:prod
+```
+
+**Development (TypeScript direct, no build step):**
+
 ```bash
 npm run dev
 ```
 
-### 4. Run Automated Tests
+Daemon listens on `PORT` (default **3001**).
+
+| URL | Purpose |
+|-----|---------|
+| `http://localhost:3001/` | Landing page |
+| `http://localhost:3001/login.html` | Operator wallet login |
+| `http://localhost:3001/dashboard.html` | Broker console |
+| `http://localhost:3001/admin.html` | Admin log viewer (password required) |
+
+### 4. OKX.AI registration (operator)
+
 ```bash
-npm run test
+npx skills add okx/onchainos-skills --yes -g
+```
+
+Then use Onchain OS agent identity commands to register/login as ASP, activate your service listing, and set `AGENT_ID` + `ONCHAINOS_CLI_SESSION` in `.env` to match your isolated session folder.
+
+Local helper scripts (`scripts/asp-login-step1.js`, etc.) read `OKX_OPERATOR_EMAIL` and `ONCHAINOS_CLI_SESSION` from `.env`.
+
+---
+
+## Environment variables
+
+Copy `.env.example` → `.env`. Every variable:
+
+| Variable | Description |
+|----------|-------------|
+| `X_LAYER_RPC_URL` | X Layer JSON-RPC endpoint (default: `https://rpc.xlayer.tech`) |
+| `ESCROW_CONTRACT_ADDRESS` | Hackathon reference TaskManager contract on X Layer |
+| `RATING_CONTRACT_ADDRESS` | Hackathon reference X402Rating contract on X Layer |
+| `USDC_TOKEN_ADDRESS` | USDC token used by TaskManager `createTask` / allowance checks |
+| `AGENT_ID` | Your registered OKX.AI agent registry ID (QuorixASP: `4187`) |
+| `ONCHAINOS_CLI_SESSION` | 16 character hex session hash → `%TEMP%/okx-cli-sessions/<hash>` |
+| `OKX_OPERATOR_EMAIL` | Operator email for local `asp-login-*` helper scripts only |
+| `OKX_AGENT_AVATAR_PATH` | Optional avatar PNG path for `asp-register-precheck.js` |
+| `MARKETPLACE_LOOKBACK_BLOCKS` | Block lookback for reference on chain scanner (not the live CLI feed) |
+| `PUBLIC_BASE_URL` | Public HTTPS URL for A2MCP / ASP service registration |
+| `ADMIN_PASSWORD` | **Required.** Admin panel password; server exits if unset |
+| `PORT` | Express listen port (default `3001`) |
+| `POLL_INTERVAL_MS` | Polling interval for on chain confirmation loops |
+| `MAX_POLL_ATTEMPTS` | Max poll attempts before giving up on pending txs |
+| `BROKER_FEE_BPS` | Broker fee basis points for SLA calculations (default `100` = 1%) |
+| `MIN_REPUTATION_SCORE` | Minimum reputation score to accept a counterparty |
+| `MAX_DISPUTE_RATE` | Maximum tolerated dispute rate (0–1 fraction) |
+| `A2MCP_CALL_PRICE_OKB` | **Legacy / unused in runtime code.** Loaded in `env.ts` but not referenced elsewhere. Reserved for future x402 metered billing on `pay_per_call_utility`. **Not** your ASP listing fee. |
+| `A2A_SERVICE_FEE_USDT` | Registered A2A service fee shown in the UI (default `0.5` USDT). Set this to match your OKX.AI listing. |
+
+**Fee clarification:** QuorixASP's registered ASP brokerage service is priced at **0.5 USDT** per the OKX.AI listing. Per tool suggested fees in the MCP registry (e.g. `0.005` USDT for reputation audit) are documentation defaults in `src/mcp/registry.ts`, separate from `A2MCP_CALL_PRICE_OKB`.
+
+---
+
+## MCP tools (live)
+
+| Tool | Purpose |
+|------|---------|
+| `check_agent_reputation` | On chain reputation audit for an agent wallet |
+| `check_escrow_status` | TaskManager escrow state for a task ID |
+| `verify_task_proof` | Compare deliverable hash against agreed proof reference |
+| `evaluate_deal_proposal` | SLA engine: accept / counter / decline |
+| `match_market_tasks` | CLI based marketplace discovery with capability scores |
+| `pay_per_call_utility` | Metered utility endpoint (requires x402 payment; not wired for demo use) |
+
+Manifest: `GET /api/mcp/manifest`
+
+---
+
+## Development
+
+```bash
+npm run dev          # ts-node src/index.ts — fast iteration, no build
+npm run build        # tsc only
+npm start            # node dist/src/index.js — requires npm run build first
+npm run start:prod   # build + start (same as production path above)
+npm test             # ts-node tests/broker.test.ts
+```
+
+Regenerate logo/favicon assets (requires `assets/logo/logo-source.png`):
+
+```bash
+python scripts/generate-logo-assets.py
 ```
 
 ---
 
-## Troubleshooting Guide
+## Hackathon context
 
-#### 1. `onchainos: command not found`
-*   **Reason**: The Onchain OS CLI binary is not in your system's environment `PATH` variable.
-*   **Fix**: Verify your installation. Re-run `npx skills add okx/onchainos-skills --yes -g` and open a brand new terminal session so path updates take effect.
+**OKX AI Genesis Hackathon** — QuorixASP demonstrates a production grade ASP broker:
 
-#### 2. `Onchain OS wallet call failed: Authentication Required`
-*   **Reason**: The Agentic Wallet session has expired or is unauthenticated.
-*   **Fix**: Run the wallet login prompt: `Log in to Agentic Wallet on Onchain OS with my email` in the agent terminal and complete the email verification handshake.
+- Real OKX.AI marketplace integration via official CLI (not a mock task list)
+- Honest documentation of the reference contract dead end and the pivot that followed
+- CLI session isolation suitable for multiple operator dashboard logins
+- Branded operator console with live task feed, negotiation, and MCP tool surface
 
-#### 3. `Log query failed: rate limit exceeded`
-*   **Reason**: The public X Layer RPC endpoint is throttled or timed out.
-*   **Fix**: Configure a custom private RPC endpoint in your `.env` under `X_LAYER_RPC_URL`. QuorixASP will automatically retry logs sweeps using exponential backoff (up to 3 attempts).
+Reference contract addresses (X Layer mainnet) are documented in `src/config/env.ts` and the landing page footer for evaluator cross check — they are **demonstration deployments**, not the live marketplace settlement path.
 
-#### 4. `Out of Gas / Insufficient Funds`
-*   **Reason**: The wallet has insufficient OKB to pay for EVM gas or lock the 5% dispute arbitration bounty.
-*   **Fix**: Deposit OKB gas tokens on X Layer to the agent wallet address (retrieve the address using `onchainos wallet show`).
+---
+
+## License
+
+`package.json` currently declares `"license": "MIT"`, but **no `LICENSE` file exists** in this repository. That value came from the original project scaffold — it was not an explicit licensing decision made during QuorixASP development.
+
+**Please confirm** whether MIT (or another license) is what you want. A `LICENSE` file will only be added after you confirm.
