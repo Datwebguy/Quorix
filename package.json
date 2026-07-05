@@ -1,0 +1,39 @@
+{
+  "name": "quorix-asp",
+  "version": "1.0.0",
+  "description": "Production-grade ASP for OKX.AI (A2A commerce broker & A2MCP API provider)",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/index.js",
+    "dev": "ts-node src/index.ts",
+    "start:prod": "npm run build && npm start",
+    "test": "ts-node tests/broker.test.ts"
+  },
+  "keywords": [
+    "okx.ai",
+    "agent-commerce",
+    "virtuals-acp",
+    "mcp",
+    "x-layer",
+    "web3"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "@okxweb3/a2a-node": "^0.1.4",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "viem": "^2.21.55",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.11.24",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

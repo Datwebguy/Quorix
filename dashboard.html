@@ -1,0 +1,2174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuorixASP — Console</title>
+<link rel="icon" href="favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32x32.png?v=3">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/logo/favicon-16x16.png?v=3">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/logo/apple-touch-icon.png?v=3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0B0B0B; --bg-1:#131313; --bg-2:#181818; --bg-3:#1F1F1F;
+    --border:rgba(255,255,255,0.08); --border-strong:rgba(255,255,255,0.14);
+    --accent:#FF4D00; --accent-hover:#FF6A26; --accent-dim:rgba(255,77,0,0.12); --accent-dim-strong:rgba(255,77,0,0.22);
+    --text-0:#F5F5F5; --text-1:#B4B4B4; --text-2:#767676;
+    --success:#17C97A; --success-dim:rgba(23,201,122,0.12);
+    --warning:#F2A900; --warning-dim:rgba(242,169,0,0.12);
+    --danger:#FF3B3B; --danger-dim:rgba(255,59,59,0.12);
+    --mono:'JetBrains Mono',monospace; --sans:'Inter',-apple-system,sans-serif;
+    --radius:14px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{background:var(--bg-0); color:var(--text-0); font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased;}
+  a{text-decoration:none; color:inherit;}
+
+  #bgCanvas{position:fixed; inset:0; width:100vw; height:100vh; z-index:0; pointer-events:none;}
+  .dash{position:relative; z-index:1; display:grid; grid-template-columns:240px 1fr; min-height:100vh;}
+  .sidebar{background:rgba(19,19,19,0.88); backdrop-filter:blur(6px); border-right:1px solid var(--border); padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh;}
+  .main{background:transparent; min-width:0;}
+  .topbar{background:rgba(11,11,11,0.85); backdrop-filter:blur(10px); position:sticky; top:0; z-index:10;}
+
+  .btn{font-family:var(--sans); font-weight:600; font-size:13.5px; border-radius:10px; padding:10px 18px; border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:8px;}
+  .btn-primary{background:var(--accent); color:#fff;} .btn-primary:hover{background:var(--accent-hover);}
+  .btn-secondary{background:transparent; border-color:var(--border-strong); color:var(--text-0);} .btn-secondary:hover{border-color:var(--accent); color:var(--accent);}
+  .btn-ghost{background:var(--bg-2); color:var(--text-1); border-color:var(--border);}
+  .btn-sm{padding:7px 13px; font-size:12px;}
+
+  .pill{display:inline-flex; align-items:center; gap:6px; font-size:10.5px; font-weight:600; font-family:var(--mono); padding:4px 9px; border-radius:100px; text-transform:uppercase;}
+  .pill::before{content:''; width:6px; height:6px; border-radius:50%;}
+  .pill-success{background:var(--success-dim); color:var(--success);} .pill-success::before{background:var(--success);}
+  .pill-warning{background:var(--warning-dim); color:var(--warning);} .pill-warning::before{background:var(--warning);}
+  .pill-danger{background:var(--danger-dim); color:var(--danger);} .pill-danger::before{background:var(--danger);}
+  .pill-accent{background:var(--accent-dim); color:var(--accent);} .pill-accent::before{background:var(--accent);}
+  .pill-neutral{background:var(--bg-3); color:var(--text-1);} .pill-neutral::before{background:var(--text-2);}
+
+  .logo{display:flex; align-items:center; gap:10px; font-weight:800; font-size:16px; padding:6px 8px 24px;}
+  a.logo-link{text-decoration:none; color:inherit; cursor:pointer; transition:opacity 0.2s ease;}
+  a.logo-link:hover{opacity:0.82;}
+  a.logo-link:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:6px;}
+  .logo-mark{display:block; width:28px; height:28px; flex-shrink:0; object-fit:contain;}
+  .logo .logo-mark{margin-right:6px;}
+  .nav-group{margin-bottom:18px;}
+  .nav-label{font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-2); padding:0 10px; margin-bottom:8px;}
+  .nav-item{display:flex; align-items:center; gap:11px; padding:9px 10px; border-radius:8px; font-size:13px; color:var(--text-1); font-weight:500; margin-bottom:2px; cursor:pointer;}
+  .nav-item .ic{width:16px; text-align:center; opacity:.8;}
+  .nav-item.active{background:var(--accent-dim); color:var(--accent); font-weight:600;}
+  .nav-item.active .ic{opacity:1;}
+  .nav-item:hover:not(.active){background:var(--bg-2); color:var(--text-0);}
+  .sidebar-foot{margin-top:auto; padding-top:14px; border-top:1px solid var(--border);}
+  .agent-status{background:var(--bg-2); border:1px solid var(--border); border-radius:10px; padding:11px;}
+  .agent-status .row1{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .agent-status .name{font-size:11.5px; font-weight:600;}
+  .agent-status .bal{font-family:var(--mono); font-size:10.5px; color:var(--text-2); margin-top:2px;}
+  .back-link{display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text-2); padding:8px 10px; margin-bottom:8px;}
+  .back-link:hover{color:var(--text-1);}
+
+  .topbar{display:flex; justify-content:space-between; align-items:center; padding:16px 30px; border-bottom:1px solid var(--border);}
+  .search{background:var(--bg-2); border:1px solid var(--border); border-radius:8px; padding:8px 13px; font-size:12px; color:var(--text-1); width:260px; outline:none;}
+  .search:focus{border-color:var(--accent);}
+  .topbar-right{display:flex; align-items:center; gap:12px;}
+  .icon-btn{width:32px; height:32px; border-radius:8px; background:var(--bg-2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--text-1); cursor:pointer;}
+  .avatar-round{width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#7A2600);}
+
+  .body-pad{padding:24px 30px 56px;}
+  .page-head{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:20px;}
+  .page-head h2{font-size:18px;}
+  .page-head .sub{color:var(--text-2); font-size:12px; margin-top:2px;}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;}
+  .stat-card{background:rgba(19,19,19,0.92); border:1px solid var(--border); border-radius:var(--radius); padding:16px;}
+  .stat-card .lbl{font-size:10.5px; color:var(--text-2); font-family:var(--mono); text-transform:uppercase; margin-bottom:8px;}
+  .stat-card .val{font-size:22px; font-weight:700; font-family:var(--mono);}
+  .stat-card .delta{font-size:11px; margin-top:5px; font-weight:600;}
+  .delta.up{color:var(--success);} .delta.down{color:var(--danger);}
+
+  .panel{background:rgba(19,19,19,0.92); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:18px;}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid var(--border);}
+  .panel-head h3{font-size:13.5px;}
+  .panel-head .link{font-size:11.5px; color:var(--accent); font-weight:600; cursor:pointer;}
+  .row2{display:grid; grid-template-columns:1.4fr 1fr; gap:18px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{text-align:left; font-family:var(--mono); font-size:10px; text-transform:uppercase; color:var(--text-2); padding:9px 18px; border-bottom:1px solid var(--border-strong); font-weight:500;}
+  td{padding:12px 18px; border-bottom:1px solid var(--border); color:var(--text-1);}
+  tr:last-child td{border-bottom:none;}
+  td.strong{color:var(--text-0); font-weight:600;}
+  td.mono{font-family:var(--mono); font-size:12px;}
+  tr.tr-hover:hover td{background:rgba(255,255,255,0.02);}
+
+  /* INPUTS */
+  .input { background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 8px; padding: 10px 14px; color: var(--text-0); font-family: var(--mono); font-size: 13px; width: 100%; outline: none; margin-bottom: 12px; }
+  .input:focus { border-color: var(--accent); }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 10.5px; text-transform: uppercase; color: var(--text-2); font-family: var(--mono); margin-bottom: 6px; }
+
+  /* REPUTATION DISPLAY */
+  .rep-score{display:flex; align-items:center; gap:18px; padding:18px;}
+  .rep-ring{width:80px; height:80px; border-radius:50%; background:conic-gradient(var(--accent) 0% 100%, var(--bg-3) 100% 100%); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .rep-ring .inner{width:62px; height:62px; border-radius:50%; background:var(--bg-1); display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .rep-ring .inner b{font-family:var(--mono); font-size:15px;}
+  .rep-ring .inner span{font-size:8.5px; color:var(--text-2);}
+  .rep-detail div{display:flex; justify-content:space-between; font-size:12px; color:var(--text-1); margin-bottom:7px; width:100%; max-width:200px;}
+  .rep-detail div b{color:var(--text-0); font-family:var(--mono);}
+
+  .match-card{display:flex; align-items:center; gap:14px; padding:14px 18px; border-bottom:1px solid var(--border);}
+  .match-card:last-child{border-bottom:none;}
+  .match-score{width:40px; height:40px; border-radius:10px; background:var(--accent-dim); color:var(--accent); font-family:var(--mono); font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .match-info{flex:1;}
+  .match-info .t{font-size:13px; font-weight:600;}
+  .match-info .d{font-size:11.5px; color:var(--text-2); margin-top:2px;}
+  .match-actions{display:flex; gap:8px;}
+  .feed-tabs{display:flex; gap:8px; margin-bottom:16px;}
+  .feed-tab{padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--bg-2); color:var(--text-1); transition:all 0.15s;}
+  .feed-tab:hover{border-color:var(--border-strong); color:var(--text-0);}
+  .feed-tab.active{background:var(--accent-dim); border-color:var(--accent); color:var(--accent);}
+
+  .neg-thread{padding:16px 18px; height: 180px; overflow-y: auto;}
+  .msg-row{display:flex; gap:10px; margin-bottom:14px;}
+  .msg-row.right{flex-direction:row-reverse;}
+  .avatar{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:10.5px; font-weight:700; flex-shrink:0;}
+  .avatar.a{background:var(--accent-dim); color:var(--accent);}
+  .avatar.b{background:var(--bg-3); color:var(--text-1);}
+  .bubble{background:var(--bg-2); border:1px solid var(--border); border-radius:10px; padding:10px 13px; font-size:12px; color:var(--text-0); font-weight:600; flex:1;}
+  .msg-row.right .bubble{background:var(--accent-dim); border-color:var(--accent-dim-strong);}
+  .neg-actions{display:flex; gap:10px; padding:12px 18px; border-top:1px solid var(--border);}
+  .neg-actions .btn{flex:1; justify-content:center;}
+
+  .escrow-track{display:flex; justify-content:space-between; padding:22px 18px 8px;}
+  .escrow-step{text-align:center; flex:1;}
+  .escrow-step .dot{width:9px; height:9px; border-radius:50%; background:var(--bg-3); margin:0 auto 6px; border:2px solid var(--border-strong);}
+  .escrow-step.done .dot{background:var(--success); border-color:var(--success);}
+  .escrow-step.active .dot{background:var(--accent); border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-dim);}
+  .escrow-step span{font-size:9px; color:var(--text-2); font-family:var(--mono); text-transform:uppercase;}
+
+  .chart-bars{display:flex; align-items:flex-end; gap:8px; height:120px; padding:18px;}
+  .chart-bars .bar{flex:1; background:linear-gradient(180deg,var(--accent),rgba(255,77,0,0.25)); border-radius:4px 4px 0 0;}
+  .chart-labels{display:flex; gap:8px; padding:0 18px 14px; font-family:var(--mono); font-size:9.5px; color:var(--text-2);}
+  .chart-labels span{flex:1; text-align:center;}
+  .donut-row{display:flex; align-items:center; gap:20px; padding:18px; border-top:1px solid var(--border);}
+  .donut{width:96px; height:96px; border-radius:50%; background:conic-gradient(var(--success) 0% 100%, var(--warning) 100% 100%, var(--danger) 100% 100%); position:relative; flex-shrink:0;}
+  .donut::after{content:''; position:absolute; inset:16px; background:var(--bg-1); border-radius:50%;}
+  .legend div{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-1); margin-bottom:7px;}
+  .legend .sw{width:8px; height:8px; border-radius:2px;}
+
+  .mcp-agent-infra{padding:18px; border-bottom:1px solid var(--border);}
+  .mcp-agent-infra h4{font-size:13px; font-weight:600; margin:0 0 8px; color:var(--text-0);}
+  .mcp-agent-infra p{font-size:12.5px; color:var(--text-1); line-height:1.5; margin:0 0 12px;}
+  .mcp-endpoint-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .mcp-endpoint-card{background:var(--bg-2); border:1px solid var(--border); border-radius:10px; padding:12px;}
+  .mcp-endpoint-card .lbl{font-size:10px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono); margin-bottom:4px;}
+  .mcp-endpoint-card .val{font-size:11px; font-family:var(--mono); color:var(--accent); word-break:break-all;}
+  .mcp-intro{padding:0 18px 6px; font-size:13px; color:var(--text-1); line-height:1.55;}
+  .mcp-tools-list{display:flex; flex-direction:column; gap:10px; max-height:520px; overflow-y:auto; padding:4px 2px 4px 0;}
+  .mcp-tools-list::-webkit-scrollbar{width:6px;}
+  .mcp-tools-list::-webkit-scrollbar-thumb{background:var(--bg-3); border-radius:3px;}
+  .mcp-tool-row{display:flex; align-items:center; gap:16px; padding:16px 18px; background:rgba(25,25,25,0.7); border:1px solid var(--border); border-radius:12px; transition:border-color 0.15s ease;}
+  .mcp-tool-row:hover{border-color:var(--border-strong);}
+  .mcp-tool-main{flex:1; min-width:0;}
+  .mcp-tool-name{font-size:14px; font-weight:600; color:var(--text-0); margin-bottom:2px;}
+  .mcp-tool-id{font-size:10.5px; color:var(--text-2); font-family:var(--mono); margin-bottom:4px; word-break:break-all;}
+  .mcp-tool-desc{font-size:12.5px; color:var(--text-1); line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .mcp-console-hint{font-size:12px; color:var(--text-2); margin:-8px 0 14px; line-height:1.45;}
+  .mcp-tool-actions{display:flex; align-items:center; gap:10px; flex-shrink:0;}
+  .mcp-console-panel{margin-top:18px;}
+  .mcp-console-body{padding:18px;}
+  .mcp-simple-form{display:grid; grid-template-columns:1fr 1fr; gap:14px 16px; margin-bottom:16px;}
+  .mcp-simple-form .field-full{grid-column:1 / -1;}
+  .mcp-field label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-2); font-family:var(--mono); margin-bottom:6px;}
+  .mcp-field input,.mcp-field textarea,.mcp-field select{width:100%; background:var(--bg-2); border:1px solid var(--border-strong); border-radius:8px; padding:10px 12px; color:var(--text-0); font-size:13px; outline:none;}
+  .mcp-field input:focus,.mcp-field textarea:focus{border-color:var(--accent);}
+  .mcp-field textarea{min-height:72px; resize:vertical; font-family:var(--sans); line-height:1.45;}
+  .mcp-advanced-toggle{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-2); cursor:pointer; padding:10px 0; border-top:1px solid var(--border); margin-bottom:0;}
+  .mcp-advanced-toggle:hover{color:var(--text-1);}
+  .mcp-advanced-toggle .chevron{font-size:10px; transition:transform 0.2s;}
+  .mcp-advanced-toggle.open .chevron{transform:rotate(90deg);}
+  .mcp-advanced-body{display:none; margin-bottom:14px;}
+  .mcp-advanced-body.open{display:block;}
+  .mcp-advanced-body textarea{width:100%; min-height:120px; background:#050505; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:var(--mono); font-size:11px; color:var(--text-1); resize:vertical;}
+  .mcp-console-actions{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
+  .mcp-output-wrap{border:1px solid var(--border); border-radius:10px; overflow:hidden; background:rgba(12,12,12,0.9);}
+  .mcp-output-head{display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--border); background:var(--bg-2);}
+  .mcp-output-head span{font-size:12px; color:var(--text-2);}
+  .mcp-output-body{padding:14px; max-height:320px; overflow:auto; font-size:13px; line-height:1.5;}
+  .mcp-out-row{display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--border);}
+  .mcp-out-row:last-child{border-bottom:none;}
+  .mcp-out-key{color:var(--text-2); font-size:12px; flex-shrink:0;}
+  .mcp-out-val{color:var(--text-0); text-align:right; word-break:break-word; font-family:var(--mono); font-size:12px;}
+  .mcp-out-msg{padding:12px; border-radius:8px; font-size:13px;}
+  .mcp-out-msg.success{background:var(--success-dim); color:var(--success);}
+  .mcp-out-msg.error{background:var(--danger-dim); color:var(--danger);}
+  .mcp-out-empty{color:var(--text-2); font-size:13px; text-align:center; padding:20px;}
+  .mcp-out-badge{display:inline-block; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; font-family:var(--mono); text-transform:uppercase;}
+  .mcp-out-badge.ok{background:var(--success-dim); color:var(--success);}
+  .mcp-out-badge.warn{background:var(--warning-dim); color:var(--warning);}
+  .mcp-out-badge.bad{background:var(--danger-dim); color:var(--danger);}
+  .mcp-out-badge.neutral{background:var(--bg-3); color:var(--text-1);}
+
+  .dev-toggle{font-size:11px; color:var(--text-2); padding:8px 10px; cursor:pointer; text-align:center; border-top:1px solid var(--border); margin-top:8px;}
+  .dev-toggle:hover{color:var(--text-1);}
+  .nav-item.dev-only{display:none;}
+  body.dev-mode .nav-item.dev-only{display:flex;}
+
+  .debug-log-panel .terminal-box{margin:0 18px 18px;}
+  .collapsible-head{cursor:pointer; user-select:none;}
+  .collapsible-head .chevron{font-size:10px; color:var(--text-2); transition:transform 0.2s;}
+  .collapsible-head.open .chevron{transform:rotate(90deg);}
+  .collapsible-body{display:none;}
+  .collapsible-body.open{display:block;}
+
+  /* TERMINAL BOX */
+  .terminal-box { background: #000; border: 1px solid var(--border-strong); border-radius: 8px; padding: 14px; font-family: var(--mono); font-size: 11px; color: #10B981; height: 320px; overflow-y: auto; line-height: 1.5; }
+  .term-line { margin-bottom: 4px; }
+  .term-line.err { color: var(--danger); }
+  .term-line.info { color: #3B82F6; }
+
+  section.page{display:none;}
+  section.page.active{display:block;}
+
+  @media(max-width:1000px){
+    .dash{grid-template-columns:1fr;}
+    .sidebar{display:none;}
+    .stat-grid, .row2{grid-template-columns:1fr;}
+    .mcp-tool-row{flex-direction:column; align-items:stretch;}
+    .mcp-tool-actions{justify-content:space-between; margin-top:8px;}
+    .mcp-simple-form{grid-template-columns:1fr;}
+    .mcp-endpoint-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div id="toastBanner" style="display:none; position:fixed; top:24px; left:50%; transform:translateX(-50%); z-index:9999; background:rgba(24,24,24,0.9); backdrop-filter:blur(16px); border:1px solid #FF4D00; border-radius:8px; padding:16px 24px; color:#F5F5F5; font-size:13px; font-weight:500; align-items:center; gap:16px; box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+  <span id="toastMessage"></span>
+  <button onclick="closeToast()" style="background:transparent; border:none; color:#B4B4B4; cursor:pointer; font-weight:700; font-size:14px; outline:none; margin-left:8px;">&times;</button>
+</div>
+
+<div class="dash">
+
+  <div class="sidebar">
+    <a href="index.html" class="logo logo-link" aria-label="QuorixASP home"><img class="logo-mark" src="assets/logo/logo-header.png?v=3" width="28" height="28" alt="" aria-hidden="true">QuorixASP</a>
+
+    <div class="nav-group">
+      <div class="nav-label">Console</div>
+      <div class="nav-item active" onclick="showPage('overview', this)"><span class="ic">▣</span> Overview</div>
+      <div class="nav-item" onclick="showPage('matching', this)"><span class="ic">◧</span> Task Feed</div>
+      <div class="nav-item" onclick="showPage('negotiation', this)"><span class="ic">⇄</span> Negotiation</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Insights</div>
+      <div class="nav-item" onclick="showPage('analytics', this)"><span class="ic">📈</span> Analytics</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Integrations</div>
+      <div class="nav-item" onclick="showPage('mcp', this)"><span class="ic">{ }</span> MCP Tools</div>
+    </div>
+    <div class="nav-group dev-only">
+      <div class="nav-label">Developer</div>
+      <div class="nav-item" onclick="showPage('dev-api', this)"><span class="ic">⚡</span> API & Integration</div>
+      <div class="nav-item" onclick="showPage('debug', this)"><span class="ic">⌁</span> Debug Logs</div>
+    </div>
+
+      <a class="back-link" href="#" onclick="logoutOperator()">← Sign Out</a>
+      <div class="dev-toggle" id="devModeToggle" onclick="toggleDevMode()">Show developer tools</div>
+      <div class="agent-status">
+        <div class="row1"><span class="name">QuorixASP</span><span class="pill pill-warning" id="sidebarStatus">Connecting</span></div>
+        <div class="bal" id="sidebarAgentMeta" style="font-family:var(--sans); font-size:11px; color:var(--text-2);">Agent ID: —</div>
+      </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <input class="search" id="topAddressSearch" placeholder="Scan Address reputation..." onchange="runTopSearch(this.value)">
+      <div class="topbar-right">
+        <span class="pill pill-warning" id="connectionPill">Connecting</span>
+        <div class="wallet-pill" id="topWalletPill" style="border:1px solid var(--border-strong); border-radius:100px; padding:4px 12px; font-family:var(--mono); font-size:11px; color:var(--text-1);">X Layer</div>
+      </div>
+    </div>
+
+    <div class="body-pad">
+
+      <!-- OVERVIEW PAGE -->
+      <section class="page active" id="overview">
+        <div class="page-head">
+          <div><h2>Overview</h2><div class="sub" id="overviewSub">Loading your broker dashboard...</div></div>
+          <button class="btn btn-primary btn-sm" onclick="showPage('negotiation', document.querySelectorAll('.nav-item')[2])">Evaluate SLA</button>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card"><div class="lbl">Your Tasks</div><div class="val" id="ovTasksCount">—</div><div class="delta up" id="ovTasksDelta">Local orchestrator</div></div>
+          <div class="stat-card"><div class="lbl">Locked Volume</div><div class="val" id="ovEscrowVolume">—</div><div class="delta up" id="ovEscrowDelta">Your jobs only</div></div>
+          <div class="stat-card"><div class="lbl">Rating Avg</div><div class="val" id="ovRating">—</div><div class="delta up" id="ovRatingDelta">Run audit below</div></div>
+          <div class="stat-card"><div class="lbl">Success Rate</div><div class="val" id="ovSuccessRate">—</div><div class="delta up" id="ovSuccessDelta">Your jobs only</div></div>
+        </div>
+
+        <div class="row2">
+          <!-- LIVE TASKS TABLE -->
+          <div class="panel">
+            <div class="panel-head"><h3>Live Task Registry</h3><span class="link" onclick="showPage('matching', document.querySelectorAll('.nav-item')[1])">View feed →</span></div>
+            <table>
+              <thead>
+                <tr><th>Task ID</th><th>Counterparty</th><th>Budget</th><th>Status</th></tr>
+              </thead>
+              <tbody id="liveTasksTableBody">
+                <tr class="tr-hover"><td colspan="4" style="text-align:center;color:var(--text-2);padding:20px;">Connecting to local daemon task feed...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Reputation audit — populated only after runLiveAudit() -->
+          <div class="panel">
+            <div class="panel-head"><h3>Reputation Audit (A2MCP)</h3></div>
+            <div class="rep-score">
+              <div class="rep-ring" id="ovRepRing"><div class="inner"><b id="ovRepScore">—</b><span>RATING</span></div></div>
+              <div class="rep-detail">
+                <div><span>Total Ratings</span><b id="ovRepCount">—</b></div>
+                <div><span>Total Escrows</span><b id="ovRepEscrows">—</b></div>
+                <div><span>Dispute Rate</span><b id="ovRepDisputes">—</b></div>
+              </div>
+            </div>
+            <div style="padding: 0 18px 18px;">
+              <input class="input" id="ovSearchAddress" placeholder="Enter Agent Address to Audit..." value="" style="margin-bottom:8px;">
+              <button class="btn btn-secondary btn-sm" onclick="runLiveAudit()" style="width:100%;">Run Reputation Audit</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ESCROWS NEEDING ATTENTION -->
+        <div class="panel" style="margin-top: 18px;">
+          <div class="panel-head">
+            <h3>⚠️ Escrows Needing Attention</h3>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Task ID</th><th>State</th><th>Time in State</th><th>Reason</th></tr>
+            </thead>
+            <tbody id="stuckEscrowsTableBody">
+              <tr class="tr-hover"><td colspan="4" style="text-align:center;color:var(--text-2);padding:20px;">No escrows need attention right now.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <!-- MATCHING FEED PAGE -->
+      <section class="page" id="matching">
+        <div class="page-head"><div><h2>Task Feed</h2><div class="sub" id="taskFeedSub">Discover opportunities on the OKX.AI marketplace</div></div><button class="btn btn-secondary btn-sm" onclick="renderTaskFeed()">Refresh</button></div>
+        <div class="feed-tabs" id="taskFeedTabs">
+          <button type="button" class="feed-tab active" data-view="marketplace" onclick="setTaskFeedView('marketplace', this)">Marketplace</button>
+          <button type="button" class="feed-tab" data-view="my" onclick="setTaskFeedView('my', this)">My Tasks</button>
+        </div>
+        <div class="panel" id="taskFeedContainer" style="background:transparent; border:none; box-shadow:none;">
+          <!-- Loaded dynamically -->
+        </div>
+      </section>
+
+      <!-- NEGOTIATION PAGE -->
+      <section class="page" id="negotiation">
+        <div class="page-head"><div><h2>Deal Negotiation</h2><div class="sub">Set budget and timeline. QuorixASP evaluates terms in real time.</div></div><span class="pill pill-accent">Live</span></div>
+        <div class="row2">
+          <!-- CONSOLE SLA FORM -->
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Deal Parameters</h3>
+              <span class="link" onclick="useMyWallet()" style="font-size:11.5px; color:var(--accent); font-weight:600; cursor:pointer;">Use My Wallet</span>
+            </div>
+            <div style="padding: 20px;">
+              <div style="font-size:12.5px; color:var(--text-2); margin-bottom:18px; line-height:1.4;">
+                Submit deal parameters to the live SLA engine. Responses are computed from broker rules and can be filed into your local orchestrator — settlement on OKX.AI is handled by OKX infrastructure.
+              </div>
+              <div id="negTaskContext" style="display:none; margin-bottom:16px; padding:12px 14px; background:var(--bg-2); border-radius:8px; border:1px solid var(--border);">
+                <div style="font-size:11px; color:var(--text-2); text-transform:uppercase; font-family:var(--mono); margin-bottom:6px;">Marketplace task</div>
+                <div id="negTaskTitle" style="font-weight:600; font-size:14px; margin-bottom:4px;"></div>
+                <div id="negTaskMeta" style="font-size:12px; color:var(--text-2); font-family:var(--mono); line-height:1.5;"></div>
+              </div>
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <label style="font-size:11.5px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono);">Target Agent (ID or Wallet)</label>
+                  <button class="btn btn-ghost btn-sm" id="negUseMyWalletBtn" onclick="useMyWallet()" style="padding: 2px 8px; font-size: 10px; border-radius: 4px; font-weight: 500; font-family: var(--sans);">Use My Wallet</button>
+                </div>
+                <input type="text" id="negClient" class="input" placeholder="e.g. 4038 or 0x..." value="" style="margin-bottom:12px;">
+              </div>
+              <div class="form-group">
+                <label style="font-size:11.5px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono); display:block; margin-bottom:6px;">Proposed Budget</label>
+                <div style="display: flex; gap: 8px; width: 100%; margin-bottom:12px;">
+                  <input type="number" step="any" id="negBudgetAmount" class="input" placeholder="e.g. 0.05" style="flex: 2; margin-bottom:0;">
+                  <select id="negTokenSelect" class="input" style="flex: 1; background: var(--bg-2); color: var(--text-0); border: 1px solid var(--border-strong); border-radius: 8px; padding: 0 10px; margin-bottom:0; outline:none; height:42px; font-family:var(--mono);">
+                    <option value="OKB">OKB</option>
+                    <option value="USDC">USDC</option>
+                    <option value="USDT">USDT</option>
+                    <option value="ETH">ETH</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label style="font-size:11.5px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono); display:block; margin-bottom:6px;">Delivery Deadline (in Days)</label>
+                <input type="number" id="negDeadlineDays" class="input" placeholder="e.g. 4" value="4" style="margin-bottom:16px;">
+              </div>
+              <button class="btn btn-primary" id="btnEvaluateProposal" onclick="evaluateNegotiation()" style="width:100%; justify-content:center;">Evaluate Proposal Terms</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h3>Negotiation Thread</h3></div>
+            <div class="neg-thread" id="negThread">
+              <div class="msg-row"><div class="avatar a">QA</div><div class="bubble">Awaiting SLA proposal parameters...</div></div>
+            </div>
+            <div class="neg-actions"><button class="btn btn-primary btn-sm" id="btnAccept" disabled>File Agreement</button><button class="btn btn-ghost btn-sm" onclick="resetThread()">Clear Thread</button></div>
+          </div>
+        </div>
+
+        <div class="panel" id="negOutputPanel" style="display:none; margin-top:18px;">
+          <div class="panel-head"><h3>SLA Engine Response</h3></div>
+          <pre id="negOutput" style="padding:18px; font-family:var(--mono); font-size:12px; color:var(--text-1); white-space:pre-wrap;"></pre>
+        </div>
+      </section>
+
+      <!-- ANALYTICS PAGE -->
+      <section class="page" id="analytics">
+        <div class="page-head"><div><h2>Analytics</h2><div class="sub" id="analyticsSub">Aggregated from live task registry</div></div><button class="btn btn-secondary btn-sm" onclick="syncAnalytics()">Refresh</button></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Task Volume (Last 7 Days)</h3><span class="pill pill-neutral" id="analyticsLivePill">Your jobs</span></div>
+          <div class="chart-bars" id="analyticsBars">
+            <div style="width:100%;text-align:center;color:var(--text-2);font-size:12px;padding:40px 0;">Loading task analytics from your orchestrator...</div>
+          </div>
+          <div class="chart-labels" id="analyticsLabels"></div>
+          <div class="donut-row">
+            <div class="donut" id="analyticsDonut"></div>
+            <div class="legend" id="analyticsLegend"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MCP TOOLS PAGE (user-friendly) -->
+      <section class="page" id="mcp">
+        <div class="page-head"><div><h2>MCP Tools</h2><div class="sub" id="mcpSub">Services your broker offers</div></div></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Available Services</h3><span class="pill pill-accent" id="mcpLiveCount">—</span></div>
+          <p class="mcp-intro">Live HTTP tools other agents can call — reputation checks, deal evaluation, and marketplace matching via OKX.AI CLI integration.</p>
+          <div style="padding:0 18px 18px;">
+            <div class="mcp-tools-list" id="mcpToolsGrid">
+              <div style="text-align:center;color:var(--text-2);padding:24px;">Loading services...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DEVELOPER API PAGE (dev mode only) -->
+      <section class="page" id="dev-api">
+        <div class="page-head"><div><h2>API & Integration</h2><div class="sub" id="devApiSub">Technical endpoints for agent developers</div></div></div>
+        <div class="panel">
+          <div class="panel-head collapsible-head open" id="devEndpointsHead" onclick="toggleDevEndpointsPanel()">
+            <h3>Agent Service Endpoints <span class="chevron">▶</span></h3>
+            <span class="pill pill-accent" id="mcpOkxStatus">—</span>
+          </div>
+          <div class="collapsible-body open" id="devEndpointsBody">
+            <div class="mcp-agent-infra">
+              <p>HTTP endpoints for remote AI agents and OKX.AI platform integration. Use these when registering your ASP or wiring external agent clients.</p>
+              <div class="mcp-endpoint-grid">
+                <div class="mcp-endpoint-card"><div class="lbl">Tool invoke (HTTP)</div><div class="val" id="mcpEndpointInvoke">—</div></div>
+                <div class="mcp-endpoint-card"><div class="lbl">Agent manifest</div><div class="val" id="mcpEndpointManifest">—</div></div>
+                <div class="mcp-endpoint-card"><div class="lbl">Tools catalog</div><div class="val" id="mcpEndpointTools">—</div></div>
+                <div class="mcp-endpoint-card"><div class="lbl">Health check</div><div class="val" id="mcpEndpointHealth">—</div></div>
+              </div>
+              <p style="margin-top:14px;font-size:12px;color:var(--text-2);line-height:1.5;" id="mcpOkxHint">—</p>
+            </div>
+          </div>
+        </div>
+        <div class="panel mcp-console-panel" id="mcpConsolePanel">
+          <div class="panel-head"><h3>Tool Console</h3><span class="pill pill-neutral" id="mcpConsoleToolLabel">No tool selected</span></div>
+          <div class="mcp-console-body">
+            <div class="mcp-field field-full" style="margin-bottom:14px;">
+              <label>Select tool to test</label>
+              <select id="mcpInvokeTool" onchange="onDevToolSelect(this.value)"></select>
+            </div>
+            <div id="mcpConsoleHint" class="mcp-console-hint" style="display:none;"></div>
+            <div id="mcpSimpleForm" class="mcp-simple-form">
+              <div class="mcp-out-empty field-full">Choose a tool from the dropdown above.</div>
+            </div>
+            <div class="mcp-advanced-toggle" id="mcpAdvancedToggle" onclick="toggleMcpAdvanced()">
+              <span class="chevron" id="mcpAdvancedChevron">▶</span>
+              <span>Advanced (Raw JSON)</span>
+            </div>
+            <div class="mcp-advanced-body" id="mcpAdvancedBody">
+              <textarea id="mcpInvokeArgs" placeholder="JSON arguments..."></textarea>
+            </div>
+            <div class="mcp-console-actions">
+              <button class="btn btn-primary btn-sm" id="btnRunMcpTool" onclick="invokeMcpTool()">Run Tool</button>
+              <button class="btn btn-ghost btn-sm" onclick="clearMcpConsole()">Clear</button>
+            </div>
+            <div class="mcp-output-wrap">
+              <div class="mcp-output-head">
+                <strong style="font-size:13px;">Result</strong>
+                <span id="mcpOutputStatus">Waiting</span>
+              </div>
+              <div id="mcpInvokeOutput" class="mcp-output-body">
+                <div class="mcp-out-empty">Results will appear here after you run a tool.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DEBUG LOGS PAGE (developer only) -->
+      <section class="page" id="debug">
+        <div class="page-head"><div><h2>Debug Logs</h2><div class="sub">Raw broker activity for development and troubleshooting</div></div></div>
+        <div class="panel debug-log-panel">
+          <div class="panel-head collapsible-head open" id="debugLogHead" onclick="toggleDebugLogPanel()">
+            <h3>Broker Activity <span class="chevron">▶</span></h3>
+            <span class="pill pill-neutral">Developer</span>
+          </div>
+          <div class="collapsible-body open" id="debugLogBody">
+            <div class="terminal-box" id="daemonTerminal">
+              <div class="term-line info">Waiting for log stream...</div>
+            </div>
+            <div style="padding:0 18px 14px; display:flex; gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="clearDebugLogs()">Clear logs</button>
+              <button class="btn btn-ghost btn-sm" onclick="syncBrokerLogs(true)">Refresh</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // Route Guard Check
+  const operatorWallet = localStorage.getItem('operatorWallet');
+  const loginType = localStorage.getItem('loginType');
+  if (!operatorWallet) {
+    window.location.href = 'login.html';
+  }
+
+  const LOCAL_DAEMON_URL = window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : window.location.origin;
+
+  let toastHideTimer = null;
+  function showToast(message, isError = true) {
+    const banner = document.getElementById('toastBanner');
+    const msgSpan = document.getElementById('toastMessage');
+    if (!banner || !msgSpan) return;
+    msgSpan.textContent = message;
+    banner.style.borderColor = isError ? '#FF4D00' : 'var(--success)';
+    banner.style.display = 'flex';
+    if (toastHideTimer) clearTimeout(toastHideTimer);
+    toastHideTimer = setTimeout(closeToast, 5000);
+  }
+  function closeToast() {
+    const banner = document.getElementById('toastBanner');
+    if (banner) banner.style.display = 'none';
+    if (toastHideTimer) {
+      clearTimeout(toastHideTimer);
+      toastHideTimer = null;
+    }
+  }
+
+  let brokerConnected = false;
+  let brokerStatus = null;
+  let mcpToolsCatalog = [];
+
+  function setConnectionState(state) {
+    const pill = document.getElementById('connectionPill');
+    const sidebar = document.getElementById('sidebarStatus');
+    if (pill) {
+      if (state === 'connected') {
+        pill.className = 'pill pill-success';
+        pill.textContent = 'Connected';
+      } else if (state === 'connecting') {
+        pill.className = 'pill pill-warning';
+        pill.textContent = 'Connecting';
+      } else {
+        pill.className = 'pill pill-danger';
+        pill.textContent = 'Offline';
+      }
+    }
+    if (sidebar) {
+      if (state === 'connected') {
+        sidebar.className = 'pill pill-success';
+        sidebar.textContent = 'Online';
+      } else if (state === 'connecting') {
+        sidebar.className = 'pill pill-warning';
+        sidebar.textContent = 'Connecting';
+      } else {
+        sidebar.className = 'pill pill-warning';
+        sidebar.textContent = 'Reconnecting';
+      }
+    }
+  }
+
+  async function waitForBroker(maxAttempts = 5) {
+    setConnectionState('connecting');
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const res = await fetch(`${LOCAL_DAEMON_URL}/api/health`);
+        if (res.ok) {
+          brokerConnected = true;
+          setConnectionState('connected');
+          return true;
+        }
+      } catch (e) {}
+      await new Promise((r) => setTimeout(r, 600 * (i + 1)));
+    }
+    brokerConnected = false;
+    setConnectionState('offline');
+    return false;
+  }
+
+  function shortToolDesc(text, maxLen = 140) {
+    if (!text) return '';
+    const t = text.trim();
+    return t.length > maxLen ? t.slice(0, maxLen).trim() + '…' : t;
+  }
+
+  function mcpStatusLabel(status) {
+    return status === 'live' ? 'LIVE' : 'DEPLOY';
+  }
+
+  function mcpStatusPillClass(status) {
+    return status === 'live' ? 'pill-success' : 'pill-neutral';
+  }
+
+  function isDevMode() {
+    return document.body.classList.contains('dev-mode');
+  }
+
+  function toggleDevMode() {
+    const on = document.body.classList.toggle('dev-mode');
+    localStorage.setItem('quorixDevMode', on ? '1' : '0');
+    const toggle = document.getElementById('devModeToggle');
+    if (toggle) toggle.textContent = on ? 'Hide developer tools' : 'Show developer tools';
+    if (on) {
+      syncBrokerLogs(true);
+    } else if (document.getElementById('dev-api')?.classList.contains('active') ||
+               document.getElementById('debug')?.classList.contains('active')) {
+      showPage('mcp', document.querySelector('.nav-item[onclick*="mcp"]'));
+    }
+  }
+
+  function toggleDebugLogPanel() {
+    document.getElementById('debugLogHead')?.classList.toggle('open');
+    document.getElementById('debugLogBody')?.classList.toggle('open');
+  }
+
+  function toggleDevEndpointsPanel() {
+    document.getElementById('devEndpointsHead')?.classList.toggle('open');
+    document.getElementById('devEndpointsBody')?.classList.toggle('open');
+  }
+
+  const USER_TOOL_DESC = {
+    check_agent_reputation: 'See trust score, ratings, and dispute history for any agent wallet.',
+    check_escrow_status: 'Check whether funds are locked, released, or disputed for a task.',
+    verify_task_proof: 'Confirm a deliverable matches the agreed proof reference.',
+    evaluate_deal_proposal: 'Get an accept, counter-offer, or decline on a proposed deal.',
+    match_market_tasks: 'Find open tasks on the OKX.AI marketplace that match your broker capabilities.',
+    pay_per_call_utility: 'Metered billing endpoint (requires payment channel setup).',
+  };
+
+  function clearDebugLogs() {
+    const term = document.getElementById('daemonTerminal');
+    if (term) term.innerHTML = '<div class="term-line info">Logs cleared.</div>';
+    lastBrokerLogCount = 0;
+  }
+
+  let activeMcpTool = '';
+
+  function okbToWei(amount) {
+    const n = parseFloat(amount);
+    if (!n || n <= 0) return '50000000000000000';
+    return (BigInt(Math.floor(n * 1e9)) * 1000000000n).toString();
+  }
+
+  const MCP_TOOL_UI = {
+    check_agent_reputation: {
+      label: 'Check agent reputation',
+      fields: [
+        { key: 'agentAddress', label: 'Agent wallet address', type: 'text', placeholder: '0x...', full: true, required: true, walletDefault: true },
+      ],
+      parseExample(ex) { return { agentAddress: ex.agentAddress || '' }; },
+      build(v) { return { agentAddress: (v.agentAddress || '').trim() }; },
+      validate(v) { return /^0x[a-fA-F0-9]{40}$/.test((v.agentAddress || '').trim()) ? null : 'Enter a valid wallet address.'; },
+    },
+    check_escrow_status: {
+      label: 'Check escrow status',
+      fields: [
+        { key: 'taskId', label: 'Task ID', type: 'text', placeholder: 'Paste task or escrow ID', full: true, required: true },
+      ],
+      parseExample(ex) { return { taskId: ex.taskId || '' }; },
+      build(v) { return { taskId: (v.taskId || '').trim() }; },
+      validate(v) { return (v.taskId || '').trim() ? null : 'Task ID is required.'; },
+    },
+    verify_task_proof: {
+      label: 'Verify task proof',
+      fields: [
+        { key: 'taskId', label: 'Task ID', type: 'text', placeholder: 'Your task ID', full: true, required: true },
+        { key: 'proofPayload', label: 'Proof hash', type: 'text', placeholder: '0x... proof reference', full: true, required: true },
+      ],
+      parseExample(ex) { return { taskId: ex.taskId || '', proofPayload: ex.proofPayload || '' }; },
+      build(v) { return { taskId: (v.taskId || '').trim(), proofPayload: (v.proofPayload || '').trim() }; },
+      validate(v) {
+        if (!(v.taskId || '').trim()) return 'Task ID is required.';
+        if (!(v.proofPayload || '').trim()) return 'Proof hash is required.';
+        return null;
+      },
+    },
+    evaluate_deal_proposal: {
+      label: 'Evaluate deal proposal',
+      fields: [
+        { key: 'clientAddress', label: 'Client wallet', type: 'text', placeholder: '0x...', walletDefault: true },
+        { key: 'budgetAmount', label: 'Budget (OKB)', type: 'number', placeholder: '0.05', step: 'any' },
+        { key: 'deadlineDays', label: 'Deadline (days)', type: 'number', placeholder: '4' },
+        { key: 'title', label: 'Task title', type: 'text', placeholder: 'Short title', full: true },
+        { key: 'description', label: 'Task description', type: 'textarea', placeholder: 'What should be delivered?', full: true },
+      ],
+      parseExample(ex) {
+        const wei = BigInt(ex.budgetWei || '50000000000000000');
+        const deadline = Number(ex.deadlineTimestamp || 0);
+        const now = Math.floor(Date.now() / 1000);
+        const days = deadline > now ? Math.max(1, Math.round((deadline - now) / 86400)) : 4;
+        return {
+          clientAddress: ex.clientAddress || '',
+          budgetAmount: (Number(wei) / 1e18).toFixed(4).replace(/\.?0+$/, ''),
+          deadlineDays: String(days),
+          title: ex.title || '',
+          description: ex.description || '',
+        };
+      },
+      build(v) {
+        const days = Math.max(1, parseInt(v.deadlineDays, 10) || 4);
+        return {
+          id: 'proposal-' + Date.now(),
+          clientAddress: (v.clientAddress || connectedUserWallet || '').trim(),
+          title: (v.title || 'Task proposal').trim(),
+          description: (v.description || '').trim(),
+          budgetWei: okbToWei(v.budgetAmount),
+          deadlineTimestamp: Math.floor(Date.now() / 1000) + days * 86400,
+        };
+      },
+      validate(v) {
+        if (!/^0x[a-fA-F0-9]{40}$/.test((v.clientAddress || connectedUserWallet || '').trim())) {
+          return 'Enter a valid client wallet address.';
+        }
+        if (!parseFloat(v.budgetAmount) || parseFloat(v.budgetAmount) <= 0) return 'Enter a valid budget amount.';
+        if (!(v.description || '').trim()) return 'Task description is required.';
+        return null;
+      },
+    },
+    match_market_tasks: {
+      label: 'Match market tasks',
+      fields: [
+        { key: 'minScore', label: 'Minimum match score (%)', type: 'number', placeholder: '25', min: 0, max: 100 },
+        { key: 'limit', label: 'Maximum results', type: 'number', placeholder: '10', min: 1, max: 50 },
+      ],
+      parseExample(ex) {
+        return { minScore: String(ex.minScore ?? 25), limit: String(ex.limit ?? 10) };
+      },
+      build(v) {
+        return {
+          minScore: Math.min(100, Math.max(0, parseInt(v.minScore, 10) || 25)),
+          limit: Math.min(50, Math.max(1, parseInt(v.limit, 10) || 10)),
+        };
+      },
+      validate() { return null; },
+    },
+    pay_per_call_utility: {
+      label: 'Pay per call utility',
+      fields: [
+        {
+          key: 'operation',
+          label: 'Operation',
+          type: 'select',
+          full: true,
+          required: true,
+          options: [
+            { value: 'reputation_audit', label: 'Reputation audit' },
+            { value: 'escrow_check', label: 'Escrow check' },
+            { value: 'task_match', label: 'Task match' },
+          ],
+        },
+      ],
+      parseExample(ex) { return { operation: ex.operation || 'reputation_audit' }; },
+      build(v) { return { operation: (v.operation || 'reputation_audit').trim() }; },
+      validate(v) { return (v.operation || '').trim() ? null : 'Operation name is required.'; },
+    },
+  };
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function formatMcpKey(k) {
+    return k
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  function getMcpToolLabel(toolName) {
+    return MCP_TOOL_UI[toolName]?.label || toolName.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  function weiToOkb(wei) {
+    try {
+      const n = Number(BigInt(String(wei || '0'))) / 1e18;
+      return n < 0.0001 ? n.toExponential(2) : n.toFixed(4).replace(/\.?0+$/, '');
+    } catch {
+      return String(wei);
+    }
+  }
+
+  function mcpStatusBadge(value) {
+    const v = String(value || '').toLowerCase();
+    let cls = 'neutral';
+    if (['accepted', 'verified', 'completed', 'active/locked', 'strong track record, low dispute rate.'].some((s) => v.includes(s))) cls = 'ok';
+    else if (['countered', 'needs-review', 'payment_required', 'no reputation history yet'].some((s) => v.includes(s))) cls = 'warn';
+    else if (['declined', 'rejected', 'disputed', 'risky'].some((s) => v.includes(s))) cls = 'bad';
+    return `<span class="mcp-out-badge ${cls}">${escapeHtml(String(value))}</span>`;
+  }
+
+  function mcpOutRow(key, val, isHtml) {
+    return `<div class="mcp-out-row"><span class="mcp-out-key">${escapeHtml(formatMcpKey(key))}</span><span class="mcp-out-val">${isHtml ? val : escapeHtml(String(val))}</span></div>`;
+  }
+
+  function setMcpOutputStatus(text) {
+    const el = document.getElementById('mcpOutputStatus');
+    if (el) el.textContent = text;
+  }
+
+  function formatMcpResultObject(obj) {
+    if (Array.isArray(obj.tasks)) {
+      let html = mcpOutRow('Tasks found', obj.count ?? obj.tasks.length);
+      obj.tasks.slice(0, 5).forEach((t, i) => {
+        const budget = t.budgetWei ? weiToOkb(t.budgetWei) + ' OKB' : '';
+        const line = [t.title || t.id, t.score != null ? t.score + '% match' : '', budget].filter(Boolean).join(' · ');
+        html += mcpOutRow('#' + (i + 1), line);
+      });
+      if (obj.tasks.length > 5) {
+        html += mcpOutRow('More', '+' + (obj.tasks.length - 5) + ' additional tasks');
+      }
+      html += `<details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--text-2);font-size:12px;">Full JSON</summary><pre style="margin-top:8px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;color:var(--text-1);">${escapeHtml(JSON.stringify(obj, null, 2))}</pre></details>`;
+      return html;
+    }
+
+    if (obj.verificationResult) {
+      let html = mcpOutRow('Result', mcpStatusBadge(obj.verificationResult), true);
+      if (obj.details) html += mcpOutRow('Details', obj.details);
+      if (obj.taskId) html += mcpOutRow('Task ID', obj.taskId);
+      html += `<details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--text-2);font-size:12px;">Full JSON</summary><pre style="margin-top:8px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;color:var(--text-1);">${escapeHtml(JSON.stringify(obj, null, 2))}</pre></details>`;
+      return html;
+    }
+
+    if (obj.status && (obj.reason || obj.proposal)) {
+      let html = mcpOutRow('Decision', mcpStatusBadge(obj.status), true);
+      if (obj.reason) html += mcpOutRow('Reason', obj.reason);
+      if (obj.proposal) {
+        const p = obj.proposal;
+        if (p.priceWei) html += mcpOutRow('Proposed price', weiToOkb(p.priceWei) + ' OKB');
+        if (p.timelineDays != null) html += mcpOutRow('Timeline', p.timelineDays + ' days');
+        if (p.deliverables?.length) html += mcpOutRow('Deliverables', p.deliverables.join(', '));
+      }
+      html += `<details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--text-2);font-size:12px;">Full JSON</summary><pre style="margin-top:8px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;color:var(--text-1);">${escapeHtml(JSON.stringify(obj, null, 2))}</pre></details>`;
+      return html;
+    }
+
+    if (obj.averageRating != null || obj.trustSummary) {
+      let html = '';
+      if (obj.averageRating != null) html += mcpOutRow('Average rating', obj.averageRating + ' / 5');
+      if (obj.disputeRate) html += mcpOutRow('Dispute rate', obj.disputeRate);
+      if (obj.totalRatedTransactions != null) html += mcpOutRow('Rated transactions', obj.totalRatedTransactions);
+      if (obj.trustSummary) html += mcpOutRow('Trust summary', obj.trustSummary);
+      if (obj.isApproved != null) html += mcpOutRow('Approved', obj.isApproved ? 'Yes' : 'No');
+      if (obj.agentAddress) html += mcpOutRow('Agent', obj.agentAddress);
+      html += `<details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--text-2);font-size:12px;">Full JSON</summary><pre style="margin-top:8px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;color:var(--text-1);">${escapeHtml(JSON.stringify(obj, null, 2))}</pre></details>`;
+      return html;
+    }
+
+    if (obj.amountLockedWei != null || (obj.status && obj.taskId)) {
+      let html = '';
+      if (obj.status) html += mcpOutRow('Escrow status', mcpStatusBadge(obj.status), true);
+      if (obj.amountLockedWei != null) html += mcpOutRow('Locked amount', weiToOkb(obj.amountLockedWei) + ' OKB');
+      if (obj.timeInCurrentStateFormatted) html += mcpOutRow('Time in state', obj.timeInCurrentStateFormatted);
+      if (obj.client) html += mcpOutRow('Client', obj.client);
+      if (obj.provider) html += mcpOutRow('Provider', obj.provider);
+      if (obj.taskId) html += mcpOutRow('Task ID', obj.taskId);
+      html += `<details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--text-2);font-size:12px;">Full JSON</summary><pre style="margin-top:8px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;color:var(--text-1);">${escapeHtml(JSON.stringify(obj, null, 2))}</pre></details>`;
+      return html;
+    }
+
+    const priority = ['status', 'message', 'operation', 'count', 'minScore'];
+    const skip = new Set(['proposal']);
+    let html = '';
+    for (const k of priority) {
+      if (obj[k] != null && typeof obj[k] !== 'object') {
+        const val = k === 'status' || k === 'verificationResult' ? mcpStatusBadge(obj[k]) : String(obj[k]);
+        html += mcpOutRow(k, val, k === 'status');
+      }
+    }
+    for (const [k, v] of Object.entries(obj)) {
+      if (priority.includes(k) || skip.has(k) || v === null || typeof v === 'object') continue;
+      html += mcpOutRow(k, v);
+    }
+    const hasNested = Object.values(obj).some((v) => v !== null && typeof v === 'object');
+    if (hasNested || !html) {
+      html += `<details style="margin-top:${html ? 12 : 0}px;"><summary style="cursor:pointer;color:var(--text-2);font-size:12px;">Full JSON</summary><pre style="margin-top:8px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;color:var(--text-1);">${escapeHtml(JSON.stringify(obj, null, 2))}</pre></details>`;
+    }
+    return html;
+  }
+
+  function normalizeMcpResponse(data) {
+    if (data && typeof data === 'object' && 'ok' in data) {
+      return {
+        isError: !data.ok,
+        result: data.ok ? data.data : (data.error?.message || 'Tool call failed.'),
+        agentError: data.error || null,
+        meta: data.meta || null,
+      };
+    }
+    return data;
+  }
+
+  function renderMcpOutput(data) {
+    const out = document.getElementById('mcpInvokeOutput');
+    if (!out) return;
+
+    const normalized = normalizeMcpResponse(data);
+
+    if (normalized.error && normalized.result == null && !('ok' in (data || {}))) {
+      setMcpOutputStatus('Failed');
+      out.innerHTML = `<div class="mcp-out-msg error">${escapeHtml(normalized.error)}</div>`;
+      return;
+    }
+
+    if (normalized.isError) {
+      setMcpOutputStatus('Error');
+      let msg = typeof normalized.result === 'string' ? normalized.result : JSON.stringify(normalized.result, null, 2);
+      if (normalized.agentError?.hint) {
+        msg += '\n\nHint: ' + normalized.agentError.hint;
+      }
+      if (normalized.agentError?.code) {
+        msg = '[' + normalized.agentError.code + '] ' + msg;
+      }
+      out.innerHTML = `<div class="mcp-out-msg error">${escapeHtml(msg)}</div>`;
+      return;
+    }
+
+    setMcpOutputStatus('Success');
+    const result = normalized.result;
+    if (result == null) {
+      out.innerHTML = '<div class="mcp-out-empty">No data returned.</div>';
+      return;
+    }
+    if (typeof result === 'object') {
+      out.innerHTML = formatMcpResultObject(result);
+    } else {
+      out.innerHTML = `<div class="mcp-out-msg success">${escapeHtml(String(result))}</div>`;
+    }
+  }
+
+  function toggleMcpAdvanced() {
+    document.getElementById('mcpAdvancedToggle')?.classList.toggle('open');
+    document.getElementById('mcpAdvancedBody')?.classList.toggle('open');
+  }
+
+  function getMcpFormValues() {
+    const ui = MCP_TOOL_UI[activeMcpTool];
+    if (!ui) return {};
+    const values = {};
+    ui.fields.forEach((f) => {
+      const el = document.getElementById('mcpField_' + f.key);
+      if (el) values[f.key] = el.value;
+    });
+    return values;
+  }
+
+  function buildMcpArgsFromForm() {
+    const ui = MCP_TOOL_UI[activeMcpTool];
+    if (!ui) return {};
+    return ui.build(getMcpFormValues());
+  }
+
+  function syncMcpRawJson() {
+    const args = buildMcpArgsFromForm();
+    const ta = document.getElementById('mcpInvokeArgs');
+    if (ta) ta.value = JSON.stringify(args, null, 2);
+  }
+
+  function renderMcpSimpleForm(toolName, example) {
+    const container = document.getElementById('mcpSimpleForm');
+    if (!container) return;
+    const ui = MCP_TOOL_UI[toolName];
+
+    if (!ui) {
+      container.innerHTML = '<div class="mcp-out-empty field-full">Use Advanced (Raw JSON) for this tool.</div>';
+      const ta = document.getElementById('mcpInvokeArgs');
+      if (ta) ta.value = JSON.stringify(example || {}, null, 2);
+      return;
+    }
+
+    const initial = ui.parseExample(example || {});
+    container.innerHTML = '';
+
+    ui.fields.forEach((f) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'mcp-field' + (f.full ? ' field-full' : '');
+      let value = initial[f.key] ?? '';
+      if (f.walletDefault && !value && connectedUserWallet) value = connectedUserWallet;
+
+      let inputHtml = '';
+      if (f.type === 'textarea') {
+        inputHtml = `<textarea id="mcpField_${f.key}" placeholder="${escapeHtml(f.placeholder || '')}">${escapeHtml(value)}</textarea>`;
+      } else if (f.type === 'select' && f.options) {
+        inputHtml = `<select id="mcpField_${f.key}">${f.options.map((o) =>
+          `<option value="${escapeHtml(o.value)}"${o.value === value ? ' selected' : ''}>${escapeHtml(o.label)}</option>`
+        ).join('')}</select>`;
+      } else {
+        const extra = [
+          f.placeholder ? `placeholder="${escapeHtml(f.placeholder)}"` : '',
+          f.step ? `step="${f.step}"` : '',
+          f.min != null ? `min="${f.min}"` : '',
+          f.max != null ? `max="${f.max}"` : '',
+        ].filter(Boolean).join(' ');
+        inputHtml = `<input id="mcpField_${f.key}" type="${f.type || 'text'}" value="${escapeHtml(value)}" ${extra}>`;
+      }
+
+      wrap.innerHTML = `<label>${escapeHtml(f.label)}</label>${inputHtml}`;
+      container.appendChild(wrap);
+
+      const el = wrap.querySelector('#mcpField_' + f.key);
+      el.addEventListener('input', syncMcpRawJson);
+      el.addEventListener('change', syncMcpRawJson);
+    });
+
+    syncMcpRawJson();
+  }
+
+  function loadToolInConsole(toolName, navigate = true) {
+    const tool = mcpToolsCatalog.find((t) => t.name === toolName);
+    if (!tool) return;
+
+    if (navigate && isDevMode()) {
+      const devNav = document.querySelector('.nav-item.dev-only[onclick*="dev-api"]');
+      showPage('dev-api', devNav);
+    }
+
+    activeMcpTool = tool.name;
+    const select = document.getElementById('mcpInvokeTool');
+    const label = document.getElementById('mcpConsoleToolLabel');
+    const ui = MCP_TOOL_UI[tool.name];
+
+    if (select) select.value = tool.name;
+    if (label) label.textContent = getMcpToolLabel(tool.name);
+
+    const hint = document.getElementById('mcpConsoleHint');
+    if (hint) {
+      hint.style.display = 'block';
+      hint.textContent = shortToolDesc(tool.description || tool.category || '', 200);
+    }
+
+    document.getElementById('mcpAdvancedBody')?.classList.remove('open');
+    document.getElementById('mcpAdvancedToggle')?.classList.remove('open');
+
+    renderMcpSimpleForm(tool.name, tool.example || {});
+    setMcpOutputStatus('Waiting');
+    document.getElementById('mcpInvokeOutput').innerHTML =
+      '<div class="mcp-out-empty">Results will appear here after you run a tool.</div>';
+
+    renderDevToolSelect();
+    document.getElementById('mcpConsolePanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function clearMcpConsole() {
+    activeMcpTool = '';
+    const form = document.getElementById('mcpSimpleForm');
+    const args = document.getElementById('mcpInvokeArgs');
+    const label = document.getElementById('mcpConsoleToolLabel');
+    if (form) form.innerHTML = '<div class="mcp-out-empty field-full">Choose a tool from the dropdown above.</div>';
+    const select = document.getElementById('mcpInvokeTool');
+    if (select) select.value = '';
+    if (args) args.value = '';
+    if (label) label.textContent = 'No tool selected';
+    const hint = document.getElementById('mcpConsoleHint');
+    if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
+    setMcpOutputStatus('Waiting');
+    document.getElementById('mcpInvokeOutput').innerHTML =
+      '<div class="mcp-out-empty">Results will appear here after you run a tool.</div>';
+    document.getElementById('mcpAdvancedBody')?.classList.remove('open');
+    document.getElementById('mcpAdvancedToggle')?.classList.remove('open');
+  }
+
+  // Page routing
+  function showPage(id, el){
+    document.querySelectorAll('section.page').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if(el) el.classList.add('active');
+    window.scrollTo({top:0, behavior:'instant'});
+    
+    if (id === 'matching') renderTaskFeed();
+    if (id === 'analytics') syncAnalytics();
+    if (id === 'mcp') renderMcpTools();
+    if (id === 'dev-api') renderDevToolSelect();
+    if (id === 'debug' && isDevMode()) syncBrokerLogs(true);
+  }
+
+  function onDevToolSelect(toolName) {
+    if (toolName) loadToolInConsole(toolName, false);
+  }
+
+  function renderDevToolSelect() {
+    const select = document.getElementById('mcpInvokeTool');
+    if (!select || !mcpToolsCatalog.length) return;
+    const current = activeMcpTool || select.value;
+    select.innerHTML = '<option value="">— Choose a tool —</option>';
+    mcpToolsCatalog.forEach((tool) => {
+      const opt = document.createElement('option');
+      opt.value = tool.name;
+      opt.textContent = (tool.displayName || getMcpToolLabel(tool.name)) + (tool.status === 'live' ? '' : ' (deploy)');
+      select.appendChild(opt);
+    });
+    if (current) select.value = current;
+  }
+
+  let skippedTaskIds = [];
+  let taskFeedView = 'marketplace';
+
+  function formatTaskPayment(task) {
+    if (task.tokenAmount != null && task.tokenSymbol) {
+      const amt = String(task.tokenAmount).trim();
+      const sym = String(task.tokenSymbol).trim();
+      if (amt && sym) return `${amt} ${sym}`;
+    }
+    if (task.paymentUsdc) {
+      return `${(Number(task.paymentUsdc) / 1e6).toFixed(2)} USDT`;
+    }
+    if (task.budgetWei) {
+      return `${(Number(task.budgetWei) / 1e6).toFixed(2)} USDT`;
+    }
+    return '—';
+  }
+
+  function formatPostedAgo(task) {
+    const ts = Number(task.createTime || task.deadlineTimestamp || 0);
+    if (!ts) return '—';
+    const diffSec = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+    if (diffSec < 3600) return `${Math.max(1, Math.round(diffSec / 60))}m ago`;
+    if (diffSec < 86400) return `${Math.max(1, Math.round(diffSec / 3600))}h ago`;
+    return `${Math.max(1, Math.round(diffSec / 86400))}d ago`;
+  }
+
+  function formatMarketplaceStatus(task) {
+    if (task.marketplaceStatusLabel) return task.marketplaceStatusLabel;
+    if (task.marketplaceStatus != null) return `STATUS_${task.marketplaceStatus}`;
+    return task.status || 'DISCOVERED';
+  }
+
+  function setTaskFeedView(view, tabEl) {
+    taskFeedView = view === 'my' ? 'my' : 'marketplace';
+    document.querySelectorAll('.feed-tab').forEach((t) => t.classList.remove('active'));
+    if (tabEl) tabEl.classList.add('active');
+    renderTaskFeed();
+  }
+
+  async function renderTaskFeed() {
+    const container = document.getElementById('taskFeedContainer');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;color:var(--text-2);padding:20px;">Loading task feed...</div>';
+
+    try {
+      const params = new URLSearchParams({ view: taskFeedView });
+      if (taskFeedView === 'my' && connectedUserWallet) {
+        params.set('wallet', connectedUserWallet);
+      }
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/tasks?${params.toString()}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = data.error || data.message || `HTTP ${res.status}`;
+        throw new Error(detail);
+      }
+
+      const sub = document.getElementById('taskFeedSub');
+      if (data.meta && sub) {
+        const scanNote = data.meta.onChainScanInProgress ? ' · Scanning now' : '';
+        const lookback = data.meta.lookbackBlocks ? ` · ${data.meta.lookbackBlocks} block lookback` : '';
+        if (taskFeedView === 'marketplace') {
+          const total = data.meta.marketplaceTotal ?? data.meta.globalOnChainCount ?? data.meta.onChainDiscovered ?? 0;
+          const authNote = data.meta.authError ? ' · login + agent identity required' : '';
+          sub.textContent =
+            `${total} live OKX.AI marketplace task${total === 1 ? '' : 's'} via task-search${scanNote}${authNote}`;
+        } else {
+          sub.textContent =
+            `${data.meta.mergedCount} task${data.meta.mergedCount === 1 ? '' : 's'} you're involved in${scanNote}`;
+        }
+      }
+
+      container.innerHTML = '';
+
+      const feedTasks = (data.tasks || []).filter(task =>
+        !skippedTaskIds.includes(task.id)
+      );
+
+      if (feedTasks.length === 0) {
+        if (taskFeedView === 'marketplace') {
+          const scanning = data.meta && (data.meta.marketplaceScanInProgress || data.meta.onChainScanInProgress || !data.meta.marketplaceCacheFresh);
+          const globalZero = (data.meta?.marketplaceTotal ?? data.meta?.globalOnChainCount ?? 0) === 0;
+          const authHint = data.meta?.authError
+            ? `<br><small>${data.meta.authError}</small><br><small>Log in on the dashboard and register an agent identity (User or ASP) to enable the live feed.</small>`
+            : (!data.meta?.cliSessionReady ? '<br><small>Log in and register an agent identity to load okx.ai/tasks.</small>' : '');
+          container.innerHTML = `<div style="text-align:center;color:var(--text-2);padding:40px;line-height:1.6;">${
+            globalZero
+              ? `No matching tasks found yet.${scanning ? ' QuorixASP is fetching from the OKX.AI marketplace API.' : ''}${authHint}`
+              : 'No tasks to display.'
+          }</div>`;
+        } else {
+          container.innerHTML = `<div style="text-align:center;color:var(--text-2);padding:40px;line-height:1.6;">You have no active tasks yet. File a deal from Negotiation to get started.</div>`;
+        }
+        return;
+      }
+
+      feedTasks.forEach((task) => {
+        const paymentLabel = formatTaskPayment(task);
+        const postedAgo = formatPostedAgo(task);
+        const statusLabel = formatMarketplaceStatus(task);
+        const score = Number(task.score) || 0;
+        const sourceLabel = task.source === 'okx-cli' || task.source === 'okx-cli-recommend'
+          ? 'OKX marketplace'
+          : (task.source === 'on-chain' || task.source === 'marketplace'
+            ? 'OKX marketplace'
+            : (task.source === 'orchestrator' ? 'Your job' : (task.source || 'Unknown')));
+        const safeId = String(task.id).replace(/'/g, '');
+
+        const card = document.createElement('div');
+        card.className = 'match-card';
+        card.innerHTML = `
+          <div class="match-score">${score}%</div>
+          <div class="match-info">
+            <div class="t">${task.title}</div>
+            <div class="d">${paymentLabel} · posted ${postedAgo} · ${sourceLabel} · ${statusLabel}</div>
+          </div>
+          <div class="match-actions">
+            <button class="btn btn-primary btn-sm" data-negotiate="1">Negotiate</button>
+            <button class="btn btn-ghost btn-sm" data-skip="1">Skip</button>
+          </div>
+        `;
+        card.querySelector('[data-negotiate]').onclick = () => negotiateTaskPreset(task);
+        card.querySelector('[data-skip]').onclick = (e) => skipTask(safeId, e.currentTarget);
+        container.appendChild(card);
+      });
+    } catch (err) {
+      const msg = err && err.message ? String(err.message) : 'Unknown error';
+      const hint = /fetch|Failed to fetch|NetworkError/i.test(msg)
+        ? 'Make sure QuorixASP is running (<code>npm start</code>) and open <a href="http://localhost:3001/dashboard.html" style="color:var(--accent)">http://localhost:3001/dashboard.html</a>, then refresh.'
+        : msg;
+      container.innerHTML = `<div style="text-align:center;color:var(--danger);padding:20px;line-height:1.6;">Could not load tasks.<br><small>${hint}</small></div>`;
+    }
+  }
+
+  let activeNegotiationTask = null;
+
+  function isValidNegotiationTarget(value) {
+    const v = (value || '').trim();
+    if (!v) return false;
+    if (/^0x[a-fA-F0-9]{40}$/.test(v)) return true;
+    if (/^\d+$/.test(v)) return true;
+    return false;
+  }
+
+  function negotiateTaskPreset(task) {
+    if (!task) return;
+    activeNegotiationTask = task;
+    showPage('negotiation', document.querySelectorAll('.nav-item')[2]);
+
+    const targetAgent = String(task.agentId || task.clientAddress || '').trim();
+    const negClient = document.getElementById('negClient');
+    negClient.value = targetAgent;
+    negClient.readOnly = !!targetAgent;
+
+    const amountRaw = task.tokenAmount != null ? String(task.tokenAmount).trim() : '';
+    const amount = amountRaw
+      ? parseFloat(amountRaw)
+      : (task.budgetWei ? Number(task.budgetWei) / 1e6 : 0);
+    document.getElementById('negBudgetAmount').value = amount > 0 ? amount : '';
+
+    const token = (task.tokenSymbol || 'USDT').toUpperCase();
+    const tokenSelect = document.getElementById('negTokenSelect');
+    if (tokenSelect && [...tokenSelect.options].some((o) => o.value === token)) {
+      tokenSelect.value = token;
+    } else if (tokenSelect) {
+      tokenSelect.value = 'USDT';
+    }
+    document.getElementById('negDeadlineDays').value = 7;
+
+    const ctx = document.getElementById('negTaskContext');
+    const titleEl = document.getElementById('negTaskTitle');
+    const metaEl = document.getElementById('negTaskMeta');
+    const useWalletBtn = document.getElementById('negUseMyWalletBtn');
+    if (ctx && titleEl && metaEl && task.id) {
+      ctx.style.display = 'block';
+      titleEl.textContent = task.title || `Task ${task.id}`;
+      metaEl.textContent = `Job #${task.id} · Client agent #${targetAgent} · ${formatTaskPayment(task)}`;
+      if (useWalletBtn) useWalletBtn.style.display = 'none';
+    } else if (ctx) {
+      ctx.style.display = 'none';
+      if (useWalletBtn) useWalletBtn.style.display = '';
+    }
+
+    const thread = document.getElementById('negThread');
+    thread.innerHTML = '';
+    addMessage(
+      'QA',
+      `Opened negotiation for "${task.title || task.id}". Terms are pre-filled from the marketplace — adjust your offer if needed, then click Evaluate Proposal Terms.`,
+      'a'
+    );
+    document.getElementById('negOutputPanel').style.display = 'none';
+    document.getElementById('btnAccept').disabled = true;
+  }
+
+  function skipTask(taskId, btn) {
+    const card = btn.closest('.match-card');
+    card.style.opacity = 0;
+    setTimeout(() => {
+      skippedTaskIds.push(taskId);
+      card.remove();
+      if (document.querySelectorAll('.match-card').length === 0) {
+        renderTaskFeed();
+      }
+    }, 200);
+  }
+
+  let connectedUserWallet = operatorWallet || "";
+
+  // Check daemon status and logs periodically on DOM load
+  async function loadBrokerStatus() {
+    try {
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/status`);
+      if (!res.ok) return;
+      brokerStatus = await res.json();
+      document.getElementById('sidebarAgentMeta').textContent =
+        `Agent #${brokerStatus.agentId} · ${brokerStatus.chain} (${brokerStatus.chainId})`;
+      document.getElementById('overviewSub').textContent =
+        `Agent #${brokerStatus.agentId} on ${brokerStatus.chain} · ${brokerStatus.mcpToolsLive} live tools`;
+    } catch (e) {}
+  }
+
+  async function loadMcpCatalog() {
+    try {
+      const [toolsRes, manifestRes] = await Promise.all([
+        fetch(`${LOCAL_DAEMON_URL}/api/mcp/tools`),
+        fetch(`${LOCAL_DAEMON_URL}/api/mcp/manifest`),
+      ]);
+      if (!toolsRes.ok) return;
+      const data = await toolsRes.json();
+      const manifest = manifestRes.ok ? await manifestRes.json() : null;
+
+      mcpToolsCatalog = (data.tools || []).map((tool) => {
+        const example = { ...(tool.example || {}) };
+        if (connectedUserWallet) {
+          if (!example.agentAddress) example.agentAddress = connectedUserWallet;
+          if (!example.clientAddress) example.clientAddress = connectedUserWallet;
+        }
+        return { ...tool, example };
+      });
+
+      const liveCount = mcpToolsCatalog.filter((t) => t.status === 'live').length;
+      const base = LOCAL_DAEMON_URL.replace(/\/$/, '');
+      document.getElementById('mcpSub').textContent =
+        `${liveCount} service${liveCount === 1 ? '' : 's'} available for agent integrations`;
+      document.getElementById('mcpLiveCount').textContent = `${liveCount} LIVE`;
+
+      const invokeEl = document.getElementById('mcpEndpointInvoke');
+      const manifestEl = document.getElementById('mcpEndpointManifest');
+      const toolsEl = document.getElementById('mcpEndpointTools');
+      const healthEl = document.getElementById('mcpEndpointHealth');
+      if (invokeEl) invokeEl.textContent = data.transports?.http?.invoke || `${base}/api/mcp/invoke`;
+      if (manifestEl) manifestEl.textContent = data.transports?.http?.manifest || `${base}/api/mcp/manifest`;
+      if (toolsEl) toolsEl.textContent = `${base}/api/mcp/tools`;
+      if (healthEl) healthEl.textContent = `${base}/api/mcp/health`;
+
+      const okxStatus = manifest?.okxAi?.integrationStatus || 'ready';
+      const okxPill = document.getElementById('mcpOkxStatus');
+      if (okxPill) {
+        okxPill.textContent = okxStatus === 'pending-deployment' ? 'LOCAL DEV' : 'OKX.AI READY';
+        okxPill.className = okxStatus === 'pending-deployment' ? 'pill pill-warning' : 'pill pill-success';
+      }
+      const okxHint = document.getElementById('mcpOkxHint');
+      if (okxHint) {
+        okxHint.textContent = manifest?.okxAi?.registrationHint ||
+          'Register your ASP on OKX.AI with A2MCP services pointing to the invoke endpoint above.';
+      }
+      const devApiSub = document.getElementById('devApiSub');
+      if (devApiSub) {
+        devApiSub.textContent = `${liveCount} live tools · HTTP + stdio transports`;
+      }
+    } catch (e) {}
+  }
+
+  function renderMcpTools() {
+    const list = document.getElementById('mcpToolsGrid');
+    if (!list) return;
+
+    if (!mcpToolsCatalog.length) {
+      list.innerHTML = '<div style="text-align:center;color:var(--text-2);padding:24px;">No services available yet.</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+
+    mcpToolsCatalog.forEach((tool) => {
+      const pillClass = mcpStatusPillClass(tool.status);
+      const pillText = mcpStatusLabel(tool.status);
+      const friendlyName = tool.displayName || getMcpToolLabel(tool.name);
+      const desc = USER_TOOL_DESC[tool.name] || shortToolDesc(tool.summary || '', 120);
+
+      const row = document.createElement('div');
+      row.className = 'mcp-tool-row';
+      row.innerHTML = `
+        <div class="mcp-tool-main">
+          <div class="mcp-tool-name">${escapeHtml(friendlyName)}</div>
+          <div class="mcp-tool-desc">${escapeHtml(desc)}</div>
+        </div>
+        <div class="mcp-tool-actions">
+          <span class="pill ${pillClass}">${pillText}</span>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+
+    renderDevToolSelect();
+  }
+
+  async function invokeMcpTool() {
+    const tool = activeMcpTool || document.getElementById('mcpInvokeTool')?.value;
+    if (!tool) {
+      showToast('Please choose a tool from the dropdown above.');
+      return;
+    }
+
+    const advancedOpen = document.getElementById('mcpAdvancedBody')?.classList.contains('open');
+    const raw = document.getElementById('mcpInvokeArgs')?.value.trim();
+    let args = {};
+
+    if (advancedOpen && raw) {
+      try {
+        args = JSON.parse(raw);
+      } catch (e) {
+        renderMcpOutput({ isError: true, result: 'Invalid JSON in Advanced section. Please fix the format.' });
+        return;
+      }
+    } else {
+      const ui = MCP_TOOL_UI[tool];
+      if (ui) {
+        const values = getMcpFormValues();
+        const err = ui.validate(values);
+        if (err) {
+          renderMcpOutput({ isError: true, result: err });
+          return;
+        }
+        args = ui.build(values);
+        syncMcpRawJson();
+      } else if (raw) {
+        try {
+          args = JSON.parse(raw);
+        } catch (e) {
+          renderMcpOutput({ isError: true, result: 'Invalid JSON arguments.' });
+          return;
+        }
+      }
+    }
+
+    setMcpOutputStatus('Running...');
+    document.getElementById('mcpInvokeOutput').innerHTML =
+      '<div class="mcp-out-empty">Running tool, please wait...</div>';
+
+    const btn = document.getElementById('btnRunMcpTool');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Running...';
+    }
+
+    try {
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/mcp/invoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tool, arguments: args }),
+      });
+      const data = await res.json();
+      if (!res.ok && !('ok' in data)) {
+        renderMcpOutput({ isError: true, result: data.error || 'Request failed.' });
+      } else {
+        renderMcpOutput(data);
+      }
+    } catch (err) {
+      renderMcpOutput({ isError: true, result: 'Could not reach QuorixASP. Make sure the broker is running.' });
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Run Tool';
+      }
+    }
+  }
+
+  async function syncAnalytics() {
+    const bars = document.getElementById('analyticsBars');
+    const labels = document.getElementById('analyticsLabels');
+    const legend = document.getElementById('analyticsLegend');
+    const donut = document.getElementById('analyticsDonut');
+
+    try {
+      const walletParam = connectedUserWallet ? `?wallet=${encodeURIComponent(connectedUserWallet)}` : '';
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/analytics${walletParam}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+
+      document.getElementById('analyticsSub').textContent =
+        `${data.taskCount} tasks · ${Number(data.lockedVolumeOkb).toFixed(4)} OKB locked`;
+
+      const days = data.volumeByDay || [];
+      const maxVol = Math.max(...days.map(d => d.volumeOkb), 0.0001);
+      bars.innerHTML = '';
+      labels.innerHTML = '';
+      days.forEach((d) => {
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.height = `${Math.max(4, (d.volumeOkb / maxVol) * 100)}%`;
+        bars.appendChild(bar);
+        const lbl = document.createElement('span');
+        lbl.textContent = d.date.slice(5);
+        labels.appendChild(lbl);
+      });
+
+      const breakdown = data.statusBreakdown || {};
+      const entries = Object.entries(breakdown);
+      legend.innerHTML = entries.length
+        ? entries.map(([k, v]) => `<div><span class="sw" style="background:var(--accent)"></span>${k}: ${v}</div>`).join('')
+        : '<div style="color:var(--text-2);">No status data yet</div>';
+
+      const success = data.successRate || 0;
+      donut.style.background = `conic-gradient(var(--success) 0% ${success}%, var(--danger) ${success}% 100%)`;
+    } catch (err) {
+      bars.innerHTML = `<div style="width:100%;text-align:center;color:var(--danger);padding:20px;">Failed to load analytics: ${err.message}</div>`;
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    if (localStorage.getItem('quorixDevMode') === '1') {
+      document.body.classList.add('dev-mode');
+      const toggle = document.getElementById('devModeToggle');
+      if (toggle) toggle.textContent = 'Hide developer tools';
+    }
+
+    await waitForBroker();
+    await Promise.all([loadBrokerStatus(), loadMcpCatalog()]);
+    if (document.getElementById('mcp').classList.contains('active')) renderMcpTools();
+    syncDaemonTasks();
+    renderTaskFeed();
+    if (isDevMode()) syncBrokerLogs(true);
+
+    const agentPill = document.querySelector('.agent-status .pill');
+    if (agentPill) {
+      if (loginType === 'Operator') {
+        agentPill.className = 'pill pill-accent';
+        agentPill.textContent = 'Operator';
+      } else if (loginType === 'Agentic') {
+        agentPill.className = 'pill pill-accent';
+        agentPill.textContent = 'Agent';
+      }
+    }
+
+    if (connectedUserWallet) {
+      const shortAddr = connectedUserWallet.slice(0, 8) + '...' + connectedUserWallet.slice(-6);
+      document.querySelector('.agent-status .bal').textContent = shortAddr;
+      const topWallet = document.getElementById('topWalletPill');
+      if (topWallet) topWallet.textContent = shortAddr;
+      document.getElementById('ovSearchAddress').value = connectedUserWallet;
+      runLiveAudit();
+    }
+
+    setInterval(() => {
+      checkDaemonStatus();
+      syncDaemonTasks();
+      syncAnalytics();
+      if (isDevMode() && document.getElementById('debug')?.classList.contains('active')) {
+        syncBrokerLogs();
+      }
+    }, 15000);
+  });
+
+  // Topbar search hook
+  function runTopSearch(val) {
+    if (/^0x[a-fA-F0-9]{40}$/.test(val)) {
+      document.getElementById('ovSearchAddress').value = val;
+      showPage('overview', document.querySelectorAll('.nav-item')[0]);
+      runLiveAudit();
+    } else {
+      showToast('Please enter a valid EVM address.');
+    }
+  }
+
+  // Clear operator session and route to login page
+  function logoutOperator() {
+    localStorage.removeItem('operatorWallet');
+    localStorage.removeItem('loginType');
+    localStorage.removeItem('adminToken');
+    window.location.href = 'login.html';
+  }
+
+  let wasConnected = false;
+
+  async function checkDaemonStatus() {
+    try {
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/health`);
+      if (!res.ok) throw new Error('health failed');
+      brokerConnected = true;
+      setConnectionState('connected');
+      if (!wasConnected) {
+        wasConnected = true;
+        syncDaemonTasks();
+        renderTaskFeed();
+      }
+    } catch (err) {
+      brokerConnected = false;
+      wasConnected = false;
+      setConnectionState('offline');
+    }
+  }
+
+
+
+  // Pull real-time task registry list from local daemon orchestrator
+  async function syncDaemonTasks() {
+    const tableBody = document.getElementById('liveTasksTableBody');
+    try {
+      const walletParam = connectedUserWallet ? `?wallet=${encodeURIComponent(connectedUserWallet)}` : '';
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/tasks${walletParam}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+
+      document.getElementById('ovTasksCount').textContent = (data.tasks || []).length;
+      if (data.meta) {
+        const mpTotal = data.meta.marketplaceTotal ?? 0;
+        const mpNote = mpTotal > 0
+          ? `${mpTotal} in OKX marketplace pool`
+          : (data.meta.authError ? 'Marketplace auth pending' : 'OKX marketplace via task-search');
+        document.getElementById('ovTasksDelta').textContent =
+          `${data.meta.orchestratorCount} local job${data.meta.orchestratorCount === 1 ? '' : 's'} · ${mpNote}`;
+      }
+      
+      let totalVolumeWei = 0n;
+      let completedCount = 0;
+      let disputedCount = 0;
+
+      tableBody.innerHTML = ''; // clear
+
+      if (!data.tasks || data.tasks.length === 0) {
+        tableBody.innerHTML = '<tr class="tr-hover"><td colspan="4" style="text-align:center;color:var(--text-2);padding:20px;">No active tasks yet. Use Deal Negotiation to file your first job.</td></tr>';
+      } else {
+        data.tasks.forEach(task => {
+          const budget = BigInt(task.budgetWei);
+          const formattedBudget = (Number(budget) / 1e18).toFixed(2) + ' OKB';
+          
+          if (task.status === 'ESCROW_LOCKED' || task.status === 'EXECUTING') {
+            totalVolumeWei += budget;
+          }
+          if (task.status === 'COMPLETED') {
+            completedCount++;
+          }
+          if (task.status === 'DISPUTED') {
+            disputedCount++;
+          }
+
+          const tr = document.createElement('tr');
+          tr.className = 'tr-hover';
+          
+          let statusPillClass = 'pill-neutral';
+          if (task.status === 'COMPLETED' || task.status === 'RESOLVED') statusPillClass = 'pill-success';
+          else if (task.status === 'NEGOTIATING' || task.status === 'DISCOVERED') statusPillClass = 'pill-accent';
+          else if (task.status === 'WAITING_ESCROW') statusPillClass = 'pill-warning';
+          else if (task.status === 'DISPUTED' || task.status === 'FAILED') statusPillClass = 'pill-danger';
+          
+          const displayStatus = task.status.replace(/_/g, ' ');
+
+          tr.innerHTML = `
+            <td class="mono">#${task.id.slice(0, 8)}</td>
+            <td>${task.clientAddress.slice(0, 6) + '...' + task.clientAddress.slice(-4)}</td>
+            <td class="strong mono">${formattedBudget}</td>
+            <td><span class="pill ${statusPillClass}">${displayStatus}</span></td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      }
+
+      document.getElementById('ovEscrowVolume').textContent =
+        totalVolumeWei > 0n
+          ? (Number(totalVolumeWei) / 1e18).toFixed(2) + ' OKB'
+          : '—';
+
+      const totalReviews = completedCount + disputedCount;
+      if (totalReviews > 0) {
+        const successRate = Math.round((completedCount / totalReviews) * 100);
+        document.getElementById('ovSuccessRate').textContent = successRate + '%';
+        document.getElementById('ovSuccessDelta').textContent = `${completedCount} settled · ${disputedCount} disputed`;
+      } else {
+        document.getElementById('ovSuccessRate').textContent = '—';
+        document.getElementById('ovSuccessDelta').textContent = 'No completed jobs yet';
+      }
+    } catch (err) {
+      // Silently ignore task sync failure
+    }
+    syncStuckEscrows();
+  }
+
+  async function syncStuckEscrows() {
+    const tableBody = document.getElementById('stuckEscrowsTableBody');
+    if (!tableBody) return;
+    if (!connectedUserWallet) {
+      tableBody.innerHTML = '<tr class="tr-hover"><td colspan="4" style="text-align:center;color:var(--text-2);padding:20px;">Sign in to see escrows linked to your wallet.</td></tr>';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/escrows/needs-attention?wallet=${encodeURIComponent(connectedUserWallet)}`);
+      const data = await res.json();
+
+      tableBody.innerHTML = ''; // clear
+
+      if (!data.escrows || data.escrows.length === 0) {
+        tableBody.innerHTML = '<tr class="tr-hover"><td colspan="4" style="text-align:center;color:var(--text-2);padding:20px;">No escrows need attention right now.</td></tr>';
+      } else {
+        data.escrows.forEach(escrow => {
+          const tr = document.createElement('tr');
+          tr.className = 'tr-hover';
+          
+          let statusPillClass = 'pill-warning';
+          if (escrow.status === 'DISPUTED') statusPillClass = 'pill-danger';
+          else if (escrow.status === 'EXECUTING') statusPillClass = 'pill-accent';
+          
+          const timeFormatted = `${Math.floor(escrow.timeInStateSeconds)}s ago`;
+
+          tr.innerHTML = `
+            <td class="mono">#${escrow.id.slice(0, 8)}</td>
+            <td><span class="pill ${statusPillClass}">${escrow.status}</span></td>
+            <td class="mono">${timeFormatted}</td>
+            <td style="color:var(--warning); font-weight:500;">${escrow.reason}</td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      }
+    } catch (err) {
+      // Silently ignore stuck escrows fetch failure
+    }
+  }
+
+  // Live reputation audit (queries local daemon)
+  async function runLiveAudit() {
+    const address = document.getElementById('ovSearchAddress').value.trim();
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      showToast('Please enter a valid EVM address.');
+      return;
+    }
+
+    const btn = document.querySelector('button[onclick="runLiveAudit()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Scanning...'; }
+
+    try {
+      const response = await fetch(`${LOCAL_DAEMON_URL}/api/reputation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.scanFailed) {
+        document.getElementById('ovRepScore').textContent = '—';
+        document.getElementById('ovRating').textContent = '—';
+        document.getElementById('ovRepCount').textContent = '—';
+        document.getElementById('ovRepEscrows').textContent = '—';
+        document.getElementById('ovRepDisputes').textContent = '—';
+        logDaemon(`Reputation scan failed. Try again in a moment.`, true);
+        return;
+      }
+
+      const scoreText = data.noHistory ? 'New' : data.averageRating.toFixed(1);
+      document.getElementById('ovRepScore').textContent = scoreText;
+      document.getElementById('ovRepCount').textContent = data.totalRatingsCount;
+      document.getElementById('ovRepEscrows').textContent = data.totalEscrowsCount;
+      document.getElementById('ovRepDisputes').textContent = `${(data.disputeRate * 100).toFixed(0)}%`;
+      document.getElementById('ovRating').textContent = scoreText;
+
+      const pct = data.noHistory ? 20 : (data.averageRating / 5.0) * 100;
+      document.getElementById('ovRepRing').style.background = `conic-gradient(var(--accent) 0% ${pct}%, var(--bg-3) ${pct}% 100%)`;
+
+      logDaemon(data.noHistory
+        ? `No on chain history yet for this address.`
+        : `Reputation loaded. Rating ${data.averageRating.toFixed(1)} of 5.`);
+    } catch (err) {
+      logDaemon(`Reputation scan failed: ${err.message}`, true);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Run Reputation Audit'; }
+    }
+  }
+
+  let lastBrokerLogCount = 0;
+
+  async function syncBrokerLogs(force = false) {
+    if (!isDevMode() && !force) return;
+    const term = document.getElementById('daemonTerminal');
+    if (!term) return;
+    if (!force && !document.getElementById('debug')?.classList.contains('active')) return;
+    try {
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/broker/logs?limit=60`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const logs = data.logs || [];
+      if (logs.length <= lastBrokerLogCount) return;
+      const fresh = logs.slice(lastBrokerLogCount);
+      lastBrokerLogCount = logs.length;
+      fresh.forEach((line) => {
+        const isErr = line.includes('[ERROR]') || line.toLowerCase().includes('failed');
+        const isWarn = line.includes('[WARN]');
+        const div = document.createElement('div');
+        div.className = 'term-line' + (isErr ? ' err' : isWarn ? ' info' : '');
+        div.textContent = line;
+        term.appendChild(div);
+      });
+      while (term.children.length > 120) term.removeChild(term.firstChild);
+      term.scrollTop = term.scrollHeight;
+    } catch (e) {}
+  }
+
+  async function evaluateNegotiation() {
+    const client = document.getElementById('negClient').value.trim();
+    const amountInput = document.getElementById('negBudgetAmount').value.trim();
+    const token = document.getElementById('negTokenSelect').value;
+    const daysInput = document.getElementById('negDeadlineDays').value.trim();
+
+    if (!isValidNegotiationTarget(client)) {
+      showToast('Please enter a valid target agent ID or EVM wallet address.');
+      return;
+    }
+    if (!amountInput || parseFloat(amountInput) <= 0) {
+      showToast('Please enter a valid budget amount.');
+      return;
+    }
+
+    const btn = document.getElementById('btnEvaluateProposal');
+    const oldText = btn ? btn.textContent : 'Evaluate Proposal Terms';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Evaluating...';
+    }
+
+    // Reset File Agreement button
+    const btnAccept = document.getElementById('btnAccept');
+    btnAccept.disabled = true;
+
+    const amount = parseFloat(amountInput);
+    const days = parseFloat(daysInput || '4');
+    const deadline = Math.floor(Date.now() / 1000) + Math.floor(days * 24 * 3600);
+
+    const tokenAddresses = {
+      'USDT': '0x1E4a5963aBFD975d8c9021ce480b42188849D41d',
+      'USDC': '0x74b7f16337b8972027f6196a17a631ac6de26d22',
+      'OKB': '0x0000000000000000000000000000000000000000',
+      'ETH': '0x0000000000000000000000000000000000000000'
+    };
+    const paymentToken = tokenAddresses[token] || '0x0000000000000000000000000000000000000000';
+
+    let budgetWei = '0';
+    if (token === 'USDT' || token === 'USDC') {
+      budgetWei = (BigInt(Math.floor(amount * 1000000)) * 1n).toString();
+    } else {
+      budgetWei = (BigInt(Math.floor(amount * 1000000)) * 1000000000n).toString(); // amount * 10^18
+    }
+
+    const thread = document.getElementById('negThread');
+    thread.innerHTML = ''; // clear
+
+    addMessage('CL', `Proposing ${amount} ${token} with a ${days} day delivery window.`, 'b');
+    addMessage('QA', `Evaluating your terms against broker rules...`, 'a');
+
+    if (!brokerConnected) {
+      addMessage('QA', 'QuorixASP is not reachable. Run npm start in the project folder, then try again.', 'a');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+      return;
+    }
+
+    const taskCtx = activeNegotiationTask || {};
+
+    try {
+      const response = await fetch(`${LOCAL_DAEMON_URL}/api/negotiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: taskCtx.id || `neg-${Date.now()}`,
+          title: taskCtx.title || 'SLA Agreement Task',
+          description: taskCtx.description || 'Filed from QuorixASP negotiation console',
+          clientAddress: client,
+          budgetWei,
+          deadlineTimestamp: deadline,
+          paymentToken
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`SLA engine returned status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const setupEscrowLock = (priceWei, deadlineTime) => {
+        btnAccept.onclick = async () => {
+          btnAccept.disabled = true;
+          const oldAcceptText = btnAccept.textContent;
+          btnAccept.textContent = 'Locking...';
+          addMessage('QA', 'Filing agreement with QuorixASP...', 'a');
+          try {
+            const submitRes = await fetch(`${LOCAL_DAEMON_URL}/api/tasks`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: taskCtx.id || `filed-${Date.now()}`,
+                clientAddress: client,
+                budgetWei: priceWei,
+                deadlineTimestamp: deadlineTime,
+                paymentToken,
+                title: taskCtx.title || 'SLA Agreement Task',
+                description: taskCtx.description || 'Filed from QuorixASP negotiation console'
+              })
+            });
+            const submitData = await submitRes.json();
+            addMessage('QA', 'Agreement filed locally. Complete payment through OKX.AI to start the job.', 'a');
+            logDaemon(`Task ${submitData.task.id} is now tracked.`);
+            btnAccept.textContent = 'Agreement Filed';
+            
+            // Re-sync tasks immediately
+            syncDaemonTasks();
+          } catch (err) {
+            addMessage('QA', `Error submitting task: ${err.message}`, 'a');
+            btnAccept.disabled = false;
+            btnAccept.textContent = oldAcceptText;
+          }
+        };
+      };
+
+      if (data.status === 'ACCEPTED') {
+        addMessage('QA', `Terms accepted. ${data.reason}`, 'a');
+        addMessage('QA', `Deliverables:\n- ${data.proposal.deliverables.join('\n- ')}`, 'a');
+        addMessage('CL', 'Ready to proceed. Click File Agreement to track this deal locally.', 'b');
+        btnAccept.disabled = false;
+        setupEscrowLock(data.proposal.priceWei, deadline);
+      } else if (data.status === 'COUNTERED') {
+        addMessage('QA', `Counter offer: ${data.reason}`, 'a');
+        addMessage('QA', `Suggested terms:\n- Price: ${(Number(data.proposal.priceWei) / 1e18).toFixed(2)} OKB\n- Timeline: ${data.proposal.timelineDays} days\n- Deliverables:\n  * ${data.proposal.deliverables.join('\n  * ')}`, 'a');
+        addMessage('CL', 'Counter offer looks good. Click File Agreement when ready.', 'b');
+        btnAccept.disabled = false;
+        
+        const counterDeadline = Math.floor(Date.now() / 1000) + Math.floor(data.proposal.timelineDays * 24 * 3600);
+        setupEscrowLock(data.proposal.priceWei, counterDeadline);
+      } else {
+        addMessage('QA', `Proposal declined. ${data.reason}`, 'a');
+        btnAccept.disabled = true;
+      }
+
+      const outPanel = document.getElementById('negOutputPanel');
+      const outText = document.getElementById('negOutput');
+      outText.textContent = JSON.stringify(data, null, 2);
+      outPanel.style.display = 'block';
+
+    } catch (err) {
+      addMessage('QA', `Negotiation failed: ${err.message}`, 'a');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    }
+  }
+
+
+
+  function resetThread() {
+    activeNegotiationTask = null;
+    const negClient = document.getElementById('negClient');
+    if (negClient) {
+      negClient.readOnly = false;
+      negClient.value = '';
+    }
+    const ctx = document.getElementById('negTaskContext');
+    if (ctx) ctx.style.display = 'none';
+    const useWalletBtn = document.getElementById('negUseMyWalletBtn');
+    if (useWalletBtn) useWalletBtn.style.display = '';
+    document.getElementById('negThread').innerHTML = '<div class="msg-row"><div class="avatar a">QA</div><div class="bubble">Awaiting SLA proposal parameters...</div></div>';
+    document.getElementById('btnAccept').disabled = true;
+    document.getElementById('negOutputPanel').style.display = 'none';
+  }
+
+  function useMyWallet() {
+    const myWallet = localStorage.getItem('operatorWallet');
+    if (myWallet) {
+      const negClient = document.getElementById('negClient');
+      negClient.readOnly = false;
+      negClient.value = myWallet;
+      activeNegotiationTask = null;
+      const ctx = document.getElementById('negTaskContext');
+      if (ctx) ctx.style.display = 'none';
+      const useWalletBtn = document.getElementById('negUseMyWalletBtn');
+      if (useWalletBtn) useWalletBtn.style.display = '';
+    } else {
+      showToast('No active operator wallet found in session. Please log in first.');
+    }
+  }
+
+  function addMessage(sender, text, typeClass) {
+    const thread = document.getElementById('negThread');
+    const row = document.createElement('div');
+    row.className = 'msg-row' + (typeClass === 'b' ? ' right' : '');
+    row.innerHTML = `<div class="avatar ${typeClass}">${sender}</div><div class="bubble">${text.replace(/\n/g, '<br>')}</div>`;
+    thread.appendChild(row);
+    thread.scrollTop = thread.scrollHeight;
+  }
+
+  // Dashboard console logs
+  function logDaemon(msg, isError = false) {
+    if (isDevMode()) {
+      const term = document.getElementById('daemonTerminal');
+      if (term) {
+        const line = document.createElement('div');
+        line.className = 'term-line' + (isError ? ' err' : '');
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        term.appendChild(line);
+        term.scrollTop = term.scrollHeight;
+      }
+    }
+    if (isError) console.error(msg);
+    else console.log(msg);
+  }
+</script>
+
+<script>
+/* ============================================================
+   QuorixASP animated background — subdued "Agent Stream".
+   Same data-stream + agent-glyph language as the landing page,
+   held at low constant intensity and slow speed so panels stay
+   fully readable — depth without distraction.
+   ============================================================ */
+(function(){
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let paths = [];
+  function buildPaths(){
+    const w = innerWidth, h = innerHeight;
+    paths = [
+      { p0:{x:-0.05*w,y:0.12*h}, c1:{x:0.3*w,y:-0.05*h}, c2:{x:0.6*w,y:0.28*h}, p1:{x:1.05*w,y:0.08*h}, nodes:[0.3,0.75] },
+      { p0:{x:-0.05*w,y:0.9*h},  c1:{x:0.35*w,y:0.7*h},  c2:{x:0.7*w,y:1.05*h}, p1:{x:1.05*w,y:0.85*h}, nodes:[0.35,0.8] },
+      { p0:{x:-0.05*w,y:0.5*h},  c1:{x:0.4*w,y:0.3*h},   c2:{x:0.65*w,y:0.65*h},p1:{x:1.05*w,y:0.45*h}, nodes:[0.5] }
+    ];
+    paths.forEach(p=>{
+      p.particles = [{t:Math.random(), speed:0.00014+Math.random()*0.00006}];
+      p.nodeState = p.nodes.map(()=>({a:0}));
+    });
+  }
+  function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; buildPaths(); }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function bez(t,p0,c1,c2,p1){
+    const mt=1-t;
+    return {
+      x: mt*mt*mt*p0.x + 3*mt*mt*t*c1.x + 3*mt*t*t*c2.x + t*t*t*p1.x,
+      y: mt*mt*mt*p0.y + 3*mt*mt*t*c1.y + 3*mt*t*t*c2.y + t*t*t*p1.y
+    };
+  }
+
+  const cur = {line:0.14, glow:0.18, pulse:0.3, node:0.4, speed:0.35};
+
+  function drawGlow(x,y,r,alpha){
+    if(alpha<=0.002) return;
+    const g = ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0, `rgba(255,77,0,${alpha})`);
+    g.addColorStop(1, 'rgba(255,77,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(x-r,y-r,r*2,r*2);
+  }
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+
+  function frame(){
+    ctx.fillStyle = '#0B0B0B';
+    ctx.fillRect(0,0,innerWidth,innerHeight);
+
+    drawGlow(innerWidth*0.88, innerHeight*0.08, 400, cur.glow*0.28);
+    drawGlow(innerWidth*0.06, innerHeight*0.92, 360, cur.glow*0.2);
+
+    paths.forEach(p=>{
+      ctx.strokeStyle = `rgba(255,255,255,${0.045*cur.line*3.2})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(p.p0.x,p.p0.y);
+      ctx.bezierCurveTo(p.c1.x,p.c1.y,p.c2.x,p.c2.y,p.p1.x,p.p1.y);
+      ctx.stroke();
+
+      p.particles.forEach(pt=>{
+        if(!reduceMotion) pt.t = (pt.t + pt.speed*cur.speed*8) % 1;
+        for(let i=0;i<8;i++){
+          const tt = (pt.t - i*0.006 + 1)%1;
+          const pos = bez(tt,p.p0,p.c1,p.c2,p.p1);
+          const a = (1-i/8)*0.4*cur.pulse;
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255,140,70,${a})`;
+          ctx.arc(pos.x,pos.y,1.8*(1-i/12),0,Math.PI*2);
+          ctx.fill();
+        }
+      });
+
+      p.nodes.forEach((nt,i)=>{
+        const pos = bez(nt,p.p0,p.c1,p.c2,p.p1);
+        let hit=false;
+        p.particles.forEach(pt=>{ if(Math.abs(pt.t-nt)<0.02) hit=true; });
+        p.nodeState[i].a = hit ? 1 : p.nodeState[i].a*0.95;
+        const act = p.nodeState[i].a;
+        const size = (6+act*2.5)*cur.node*2;
+        drawGlow(pos.x,pos.y, 24+act*16, act*0.3*cur.node);
+        ctx.save();
+        ctx.translate(pos.x,pos.y);
+        ctx.strokeStyle = `rgba(255,255,255,${(0.1+act*0.4)*cur.node*2})`;
+        ctx.fillStyle = `rgba(255,77,0,${(0.05+act*0.3)*cur.node*2})`;
+        ctx.lineWidth = 1;
+        roundRect(ctx,-size/2,-size/2,size,size,3);
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+      });
+    });
+
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+
+</body>
+</html>

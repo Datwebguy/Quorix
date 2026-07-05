@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuorixASP — Admin Panel</title>
+<link rel="icon" href="favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32x32.png?v=3">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/logo/favicon-16x16.png?v=3">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/logo/apple-touch-icon.png?v=3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0B0B0B; --bg-1:#131313; --bg-2:#181818; --bg-3:#1F1F1F;
+    --border:rgba(255,255,255,0.08); --border-strong:rgba(255,255,255,0.14);
+    --accent:#FF4D00; --accent-hover:#FF6A26; --accent-dim:rgba(255,77,0,0.12);
+    --text-0:#F5F5F5; --text-1:#B4B4B4; --text-2:#767676;
+    --success:#17C97A; --danger:#FF4D4D; --sans:'Inter',-apple-system,sans-serif;
+    --mono:'JetBrains Mono',monospace; --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg-0); color:var(--text-0); font-family:var(--sans); min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow-x:hidden;}
+  
+  .container{position:relative; z-index:1; max-width:800px; width:90%; margin:40px 0;}
+  .glass{background:rgba(24,24,24,0.65); backdrop-filter:blur(16px); border:1px solid var(--border-strong); border-radius:var(--radius); padding:40px; box-shadow:0 20px 50px rgba(0,0,0,0.5);}
+  
+  .logo{display:flex; align-items:center; justify-content:center; font-weight:800; font-size:24px; color:var(--text-0); margin-bottom:16px;}
+  a.logo-link{text-decoration:none; color:inherit; cursor:pointer; transition:opacity 0.2s ease;}
+  a.logo-link:hover{opacity:0.82;}
+  a.logo-link:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:6px;}
+  .logo-mark{display:block; width:36px; height:36px; flex-shrink:0; object-fit:contain;}
+  .logo .logo-mark{margin-right:8px;}
+  
+  h1{font-size:26px; font-weight:800; line-height:1.2; margin-bottom:8px; text-align:center;}
+  p{font-size:14px; color:var(--text-1); line-height:1.6; margin-bottom:24px; text-align:center;}
+  
+  .btn{font-family:var(--sans); font-weight:600; font-size:13px; border-radius:8px; padding:10px 16px; border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:8px; justify-content:center; transition:background-color 0.2s;}
+  .btn-primary{background:var(--accent); color:#fff; width:100%;} .btn-primary:hover{background:var(--accent-hover);}
+  .btn-secondary{background:transparent; border-color:var(--border-strong); color:var(--text-0);} .btn-secondary:hover{border-color:var(--accent); color:var(--accent);}
+  .btn-ghost{background:transparent; color:var(--text-2);} .btn-ghost:hover{color:var(--text-0);}
+  .btn-sm{padding:6px 12px; font-size:11px; border-radius:6px;}
+  
+  .input-group{margin-bottom:16px; width:100%;}
+  .input{background:var(--bg-3); border:1px solid var(--border); border-radius:6px; color:var(--text-0); font-family:var(--sans); font-size:13px; padding:10px 12px; width:100%; outline:none;}
+  .input:focus{border-color:var(--accent);}
+  
+  /* TERMINAL BOX */
+  .terminal-box { background: #000; border: 1px solid var(--border-strong); border-radius: 8px; padding: 14px; font-family: var(--mono); font-size: 11px; color: #10B981; height: 480px; overflow-y: auto; line-height: 1.5; text-align: left; }
+  .term-line { margin-bottom: 4px; }
+  .term-line.err { color: var(--danger); }
+  .term-line.info { color: #3B82F6; }
+
+  .page-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:16px;}
+  .page-head h2{font-size:18px; font-weight:700;}
+  .page-head .sub{font-size:12px; color:var(--text-2); margin-top:2px;}
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <!-- LOGIN CARD -->
+  <div id="loginArea" class="glass" style="max-width: 480px; margin: 0 auto;">
+    <a href="index.html" class="logo logo-link" aria-label="QuorixASP home">
+      <img class="logo-mark" src="assets/logo/logo-header.png?v=3" width="36" height="36" alt="" aria-hidden="true">
+      QuorixASP Admin
+    </a>
+    <h1>Administrator Login</h1>
+    <p>Provide secure authorization credentials to gain access to the live enclave daemon log streams.</p>
+    
+    <div class="input-group">
+      <input type="password" id="adminPasswordInput" class="input" placeholder="Enter Admin Password">
+    </div>
+    <button class="btn btn-primary" id="btnAuth" onclick="tryAdminLogin()">Authorize Admin</button>
+  </div>
+
+  <!-- CONSOLE CARD -->
+  <div id="consoleArea" class="glass" style="display: none; width: 100%;">
+    <div class="page-head">
+      <div>
+        <h2>⚙ Admin Live Logs</h2>
+        <div class="sub">Real-time daemon and enclave events stream</div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary btn-sm" id="btnTogglePII" onclick="togglePIIMask()">Reveal Full Details</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearAdminLogs()">Clear Screen</button>
+      </div>
+    </div>
+    <div class="terminal-box" id="daemonTerminal">
+      <div class="term-line info">[Console] Connecting to local daemon console...</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const LOCAL_DAEMON_URL = window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : window.location.origin;
+  let adminToken = localStorage.getItem('adminToken') || "";
+  let revealPII = false;
+  let daemonOnline = false;
+
+  async function checkDaemonStatus() {
+    try {
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/health`);
+      daemonOnline = res.ok;
+    } catch {
+      daemonOnline = false;
+    }
+  }
+
+  // Mask PII helper for logs streaming
+  function maskLogPII(log) {
+    if (revealPII) return log;
+    
+    // Mask emails (e.g. user@example.com -> u***r@example.com)
+    let masked = log.replace(/([a-zA-Z0-9._%+-])[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, (m) => {
+      const parts = m.split('@');
+      const name = parts[0];
+      const dom = parts[1];
+      if (name.length <= 2) return name[0] + '***@' + dom;
+      return name[0] + '***' + name[name.length - 1] + '@' + dom;
+    });
+    
+    // Mask wallet addresses (e.g. 0x1234...5678 -> 0x1234...5678)
+    masked = masked.replace(/0x[a-fA-F0-9]{40}/g, m => {
+      return m.slice(0, 6) + '...' + m.slice(-4);
+    });
+    
+    return masked;
+  }
+
+  function togglePIIMask() {
+    revealPII = !revealPII;
+    const btn = document.getElementById('btnTogglePII');
+    btn.textContent = revealPII ? 'Mask PII Details' : 'Reveal Full Details';
+    syncDaemonLogs();
+  }
+
+  function clearAdminLogs() {
+    const term = document.getElementById('daemonTerminal');
+    if (term) term.innerHTML = '';
+  }
+
+  async function tryAdminLogin() {
+    const passwordInput = document.getElementById('adminPasswordInput');
+    const password = passwordInput.value;
+    if (!password) return;
+    
+    const btn = document.getElementById('btnAuth');
+    btn.disabled = true;
+    btn.textContent = 'Authorizing...';
+    passwordInput.disabled = true;
+    
+    try {
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/auth/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to authenticate admin');
+        btn.disabled = false;
+        btn.textContent = 'Authorize Admin';
+        passwordInput.disabled = false;
+        return;
+      }
+      
+      adminToken = data.token;
+      localStorage.setItem('adminToken', adminToken);
+      setupAdminMode();
+    } catch (err) {
+      alert('Admin login error: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Authorize Admin';
+      passwordInput.disabled = false;
+    }
+  }
+
+  function setupAdminMode() {
+    document.getElementById('loginArea').style.display = 'none';
+    document.getElementById('consoleArea').style.display = 'block';
+    
+    // Start logs interval check
+    syncDaemonLogs();
+    setInterval(syncDaemonLogs, 2000);
+  }
+
+  // Pull authentic daemon logs in real-time
+  async function syncDaemonLogs() {
+    const term = document.getElementById('daemonTerminal');
+    if (!term) return;
+
+    await checkDaemonStatus();
+
+    if (!daemonOnline) {
+      term.innerHTML = `
+        <div class="term-line err">[Console] QuorixASP is not reachable.</div>
+        <div class="term-line info">[Console] Run npm start in the project folder, then refresh.</div>
+      `;
+      return;
+    }
+
+    try {
+      const headers = {};
+      if (adminToken) {
+        headers['x-admin-token'] = adminToken;
+      }
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/logs`, { headers });
+      if (!res.ok) {
+        const data = await res.json();
+        term.innerHTML = `<div class="term-line err">[Console] Access Denied: ${data.error || 'Admin authentication required'}</div>`;
+        return;
+      }
+      
+      const data = await res.json();
+      term.innerHTML = ''; // clear
+      data.logs.forEach(log => {
+        const line = document.createElement('div');
+        line.className = 'term-line';
+        if (log.includes('[ERROR]') || log.includes('Error')) {
+          line.className += ' err';
+        } else if (log.includes('[Daemon]') || log.includes('[Orchestrator]') || log.includes('[NegotiationEngine]')) {
+          line.className += ' info';
+        }
+        line.textContent = maskLogPII(log);
+        term.appendChild(line);
+      });
+      term.scrollTop = term.scrollHeight;
+    } catch (err) {
+      // Silently ignore log fetch failure
+    }
+  }
+
+  // Auto-restore admin status if token exists on load
+  window.addEventListener('DOMContentLoaded', () => {
+    if (adminToken) {
+      fetch(`${LOCAL_DAEMON_URL}/api/auth/admin-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: adminToken })
+      }).then(res => {
+        if (res.ok) {
+          setupAdminMode();
+        } else {
+          localStorage.removeItem('adminToken');
+          adminToken = "";
+        }
+      }).catch(() => {});
+    }
+  });
+</script>
+
+</body>
+</html>

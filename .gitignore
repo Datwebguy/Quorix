@@ -1,0 +1,49 @@
+# --- Secrets & local env ---
+.env
+.env.*
+!.env.example
+
+# --- Dependencies ---
+node_modules/
+
+# --- Build output ---
+dist/
+build/
+*.tsbuildinfo
+
+# --- OKX / OnchainOS session data (never commit) ---
+.onchainos_session.json
+.onchainos/
+**/.onchainos/
+**/okx-cli-sessions/
+**/session.json
+**/wallets.json
+**/cache.json
+**/chain_cache.json
+**/.okx-agent-task/logs/
+**/.okx-agent-task/**/audit.jsonl
+
+# --- Dev scratch & probes (test emails, wallet fixtures) ---
+scratch/
+
+# --- Logs ---
+*.log
+audit.jsonl
+watchdog.log
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# --- Python (logo asset script) ---
+__pycache__/
+*.pyc
+.venv/
+
+# --- Ephemeral tunnels / local overrides ---
+.cloudflared/
+*.trycloudflare.url
