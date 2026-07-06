@@ -36,6 +36,32 @@ const STATUS_LABELS: Record<number, string> = {
   9: 'FAILED',
 };
 
+const STATUS_NAME_TO_CODE: Record<string, number> = {
+  draft: -1,
+  created: 0,
+  accepted: 1,
+  submitted: 2,
+  rejected: 3,
+  refused: 3,
+  disputed: 4,
+  admin_stopped: 5,
+  completed: 6,
+  complete: 6,
+  closed: 7,
+  close: 7,
+  expired: 8,
+  failed: 9,
+};
+
+function statusCodeFromRaw(statusRaw: unknown): number | null {
+  if (statusRaw == null || statusRaw === '') return null;
+  if (typeof statusRaw === 'number' && Number.isFinite(statusRaw)) return statusRaw;
+  const asNum = Number(statusRaw);
+  if (Number.isFinite(asNum) && String(statusRaw).trim() !== '') return asNum;
+  const key = String(statusRaw).trim().toLowerCase().replace(/\s+/g, '_');
+  return STATUS_NAME_TO_CODE[key] ?? null;
+}
+
 export function okxStatusLabel(code: number | null | undefined): string {
   if (code == null || !Number.isFinite(code)) return 'UNKNOWN';
   return STATUS_LABELS[code] ?? `STATUS_${code}`;
@@ -91,10 +117,13 @@ function normalizeStatusPayload(jobId: string, data: unknown): OkxTaskStatusSnap
     nested.status ??
     record.statusCode ??
     record.status;
-  const statusCode =
-    statusRaw != null && statusRaw !== '' && Number.isFinite(Number(statusRaw))
-      ? Number(statusRaw)
-      : null;
+  const statusCode = statusCodeFromRaw(statusRaw);
+  const statusLabel =
+    statusCode != null
+      ? okxStatusLabel(statusCode)
+      : statusRaw != null
+        ? String(statusRaw).trim().toUpperCase()
+        : 'UNKNOWN';
 
   const resolvedJobId = String(
     nested.jobId ?? nested.id ?? record.jobId ?? record.id ?? jobId
@@ -103,7 +132,7 @@ function normalizeStatusPayload(jobId: string, data: unknown): OkxTaskStatusSnap
   return {
     jobId: resolvedJobId,
     statusCode,
-    statusLabel: okxStatusLabel(statusCode),
+    statusLabel,
     title: nested.title != null ? String(nested.title) : undefined,
     tokenAmount:
       nested.tokenAmount != null
@@ -130,6 +159,66 @@ function normalizeStatusPayload(jobId: string, data: unknown): OkxTaskStatusSnap
   };
 }
 
+/** Parse `agent status` plain-text blocks (Task status: created, jobId: …). */
+export function parsePlainTaskStatus(stdout: string, fallbackJobId: string): OkxTaskStatusSnapshot | null {
+  const text = (stdout || '').trim();
+  if (!text || text.startsWith('{')) return null;
+
+  const fields: Record<string, string> = {};
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const colon = trimmed.indexOf(':');
+    if (colon <= 0) continue;
+    const key = trimmed.slice(0, colon).trim().toLowerCase();
+    const value = trimmed.slice(colon + 1).trim();
+    if (key && value) fields[key] = value;
+  }
+
+  const statusName =
+    fields['task status']?.replace(/^task\s+status:\s*/i, '').trim() ||
+    fields.status?.trim() ||
+    (() => {
+      const m = text.match(/task\s+status:\s*(\S+)/i);
+      return m ? m[1] : '';
+    })();
+
+  if (!statusName && !fields.jobid && !fields.title) return null;
+
+  const statusCode = statusCodeFromRaw(statusName);
+  const resolvedJobId = fields.jobid || fields['job id'] || fallbackJobId;
+
+  let tokenAmount: string | undefined;
+  let tokenSymbol: string | undefined;
+  const budget = fields.budget?.trim();
+  if (budget) {
+    const budgetMatch = budget.match(/^([\d.]+)\s*([A-Za-z]+)?$/);
+    if (budgetMatch) {
+      tokenAmount = budgetMatch[1];
+      tokenSymbol = budgetMatch[2]?.toUpperCase();
+    }
+  }
+
+  return {
+    jobId: resolvedJobId,
+    statusCode,
+    statusLabel:
+      statusCode != null
+        ? okxStatusLabel(statusCode)
+        : statusName
+          ? statusName.toUpperCase()
+          : 'UNKNOWN',
+    title: fields.title,
+    tokenAmount,
+    tokenSymbol,
+    clientAgentId: fields.user || fields.client || fields.buyer,
+    providerAgentId: fields.asp || fields.provider || fields.seller,
+    portalUrl: portalUrlForJob(resolvedJobId),
+    aspNextStep: aspNextStepForStatus(statusCode),
+    raw: text,
+  };
+}
+
 /** Live OKX.AI job status via `onchainos agent status`. */
 export async function fetchOkxTaskStatus(
   session: OkxCliSession,
@@ -137,9 +226,18 @@ export async function fetchOkxTaskStatus(
 ): Promise<OkxTaskStatusSnapshot> {
   const args = ['agent', 'status', String(jobId), '--agent-id', session.agentId];
   const { stdout } = await execOnchainOs(args, session.homeDir, 90_000);
-  const payload = parseOnchainOsJson<CliEnvelope<unknown>>(stdout);
-  assertOnchainOsOk(payload, 'agent status');
-  return normalizeStatusPayload(jobId, payload.data ?? payload);
+
+  try {
+    const payload = parseOnchainOsJson<CliEnvelope<unknown>>(stdout);
+    assertOnchainOsOk(payload, 'agent status');
+    return normalizeStatusPayload(jobId, payload.data ?? payload);
+  } catch {
+    const plain = parsePlainTaskStatus(stdout, jobId);
+    if (plain) return plain;
+    throw new Error(
+      `Could not parse OKX.AI task status: ${stdout.trim().slice(0, 240)}${stdout.length > 240 ? '…' : ''}`
+    );
+  }
 }
 
 function summarizePlainContactOutput(stdout: string): string {
