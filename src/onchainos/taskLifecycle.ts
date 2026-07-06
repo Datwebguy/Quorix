@@ -1,6 +1,7 @@
 import {
   assertOnchainOsOk,
   execOnchainOs,
+  isContactUserPlainSuccess,
   parseOnchainOsJson,
 } from './exec';
 import type { OkxCliSession } from './taskMarketplace';
@@ -141,6 +142,19 @@ export async function fetchOkxTaskStatus(
   return normalizeStatusPayload(jobId, payload.data ?? payload);
 }
 
+function summarizePlainContactOutput(stdout: string): string {
+  const line =
+    (stdout || '')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find((l) => l.length > 0) || '';
+  if (!line) return 'Opened negotiation with the task publisher on OKX.AI.';
+  if (/cold[- ]?start|cold[- ]?sta/i.test(line)) {
+    return 'Cold-start opener sent to the task publisher on OKX.AI. Wait for their reply in the OKX.AI negotiation channel.';
+  }
+  return line.length > 280 ? `${line.slice(0, 277)}…` : line;
+}
+
 /** Start real ASP negotiation — `onchainos agent contact-user`. */
 export async function contactUserForTask(
   session: OkxCliSession,
@@ -153,14 +167,23 @@ export async function contactUserForTask(
     '--agent-id',
     session.agentId,
   ];
-  const { stdout } = await execOnchainOs(args, session.homeDir, 120_000);
-  const payload = parseOnchainOsJson<CliEnvelope<unknown>>(stdout);
-  assertOnchainOsOk(payload, 'agent contact-user');
-  const message =
-    typeof payload.message === 'string' && payload.message.trim()
-      ? payload.message.trim()
-      : 'Opened negotiation with the task publisher on OKX.AI.';
-  return { ok: true, message, data: payload.data };
+  const { stdout, stderr } = await execOnchainOs(args, session.homeDir, 120_000);
+
+  try {
+    const payload = parseOnchainOsJson<CliEnvelope<unknown>>(stdout);
+    assertOnchainOsOk(payload, 'agent contact-user');
+    const message =
+      typeof payload.message === 'string' && payload.message.trim()
+        ? payload.message.trim()
+        : 'Opened negotiation with the task publisher on OKX.AI.';
+    return { ok: true, message, data: payload.data };
+  } catch (parseErr) {
+    // contact-user failures return JSON { ok:false }; exit 0 + non-JSON = plain-text success
+    if (stdout.trim() && (isContactUserPlainSuccess(stdout, stderr) || !stdout.trim().startsWith('{'))) {
+      return { ok: true, message: summarizePlainContactOutput(stdout) };
+    }
+    throw parseErr;
+  }
 }
 
 export function isRealMarketplaceJobId(id: unknown): boolean {

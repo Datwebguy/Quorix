@@ -66,12 +66,46 @@ export function execOnchainOs(
   });
 }
 
+/** Parse CLI stdout that may be pure JSON or JSON embedded in log/path text. */
 export function parseOnchainOsJson<T = unknown>(stdout: string): T {
-  const trimmed = stdout.trim();
+  const trimmed = (stdout || '').trim();
   if (!trimmed) {
     throw new Error('Onchain OS CLI returned empty stdout');
   }
-  return JSON.parse(trimmed) as T;
+
+  const attempts: string[] = [trimmed];
+
+  const firstBrace = trimmed.indexOf('{');
+  const lastBrace = trimmed.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    attempts.push(trimmed.slice(firstBrace, lastBrace + 1));
+  }
+
+  for (const line of trimmed.split(/\r?\n/)) {
+    const lt = line.trim();
+    if (lt.startsWith('{') && lt.endsWith('}')) attempts.push(lt);
+  }
+
+  for (const candidate of attempts) {
+    try {
+      return JSON.parse(candidate) as T;
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error(
+    `Onchain OS CLI returned non-JSON output: ${trimmed.slice(0, 240)}${trimmed.length > 240 ? '…' : ''}`
+  );
+}
+
+/** True when contact-user succeeded but emitted human/playbook text instead of JSON. */
+export function isContactUserPlainSuccess(stdout: string, stderr = ''): boolean {
+  const combined = `${stdout || ''}\n${stderr || ''}`.trim();
+  if (!combined) return false;
+  return /cold[- ]?start|cold[- ]?sta|contact[- ]?user|opener|xmtp|session created|negotiation opened|message sent|canonical self-intro/i.test(
+    combined
+  );
 }
 
 export function assertOnchainOsOk(
