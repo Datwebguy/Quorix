@@ -142,6 +142,19 @@
   .msg-row.right .bubble{background:var(--accent-dim); border-color:var(--accent-dim-strong);}
   .neg-actions{display:flex; gap:10px; padding:12px 18px; border-top:1px solid var(--border);}
   .neg-actions .btn{flex:1; justify-content:center;}
+  .neg-panel-body{padding:20px;}
+  .neg-intro{font-size:12.5px; color:var(--text-2); margin-bottom:18px; line-height:1.45;}
+  .neg-task-card{margin-bottom:16px; padding:12px 14px; background:var(--bg-2); border-radius:10px; border:1px solid var(--border);}
+  .neg-task-card .lbl{font-size:10px; color:var(--text-2); text-transform:uppercase; font-family:var(--mono); letter-spacing:.06em; margin-bottom:8px;}
+  .neg-task-card .title{font-weight:600; font-size:14px; color:var(--text-0); margin-bottom:10px; line-height:1.35; word-break:break-word;}
+  .neg-task-rows{display:flex; flex-direction:column; gap:6px;}
+  .neg-task-row{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; font-size:12px;}
+  .neg-task-row .k{color:var(--text-2); font-family:var(--mono); text-transform:uppercase; font-size:10px; flex-shrink:0; padding-top:2px;}
+  .neg-task-row .v{color:var(--text-0); font-family:var(--mono); text-align:right; word-break:break-all;}
+  .neg-budget-row{display:flex; gap:8px; width:100%; margin-bottom:12px;}
+  .neg-budget-row .input{margin-bottom:0;}
+  .neg-label-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px; flex-wrap:wrap;}
+  .neg-label-row label{font-size:11.5px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono);}
 
   .escrow-track{display:flex; justify-content:space-between; padding:22px 18px 8px;}
   .escrow-step{text-align:center; flex:1;}
@@ -334,6 +347,16 @@
     .donut-row{flex-direction:column; align-items:center;}
     .neg-actions{flex-direction:column;}
     .neg-actions .btn{min-height:44px;}
+    #negotiation .page-head{align-items:flex-start; gap:10px;}
+    #negotiation .page-head .pill{align-self:flex-start; margin-top:4px;}
+    .neg-panel-body{padding:16px;}
+    .neg-intro{font-size:12px; margin-bottom:14px;}
+    .neg-budget-row{flex-direction:column; gap:10px;}
+    .neg-budget-row .input,.neg-budget-row select{width:100%; flex:none; height:44px;}
+    #negotiation .panel-head{flex-wrap:wrap; gap:8px;}
+    #negotiation .panel-head .link{min-height:44px; display:inline-flex; align-items:center;}
+    .neg-thread{min-height:120px; height:auto; max-height:200px;}
+    #btnEvaluateProposal{position:sticky; bottom:calc(72px + env(safe-area-inset-bottom, 0px)); z-index:5; margin-top:4px; min-height:48px; font-size:14px; box-shadow:0 -8px 24px rgba(0,0,0,0.35);}
     .feed-tabs{flex-wrap:wrap;}
     .feed-tab{flex:1; min-height:44px; display:inline-flex; align-items:center; justify-content:center;}
 
@@ -564,29 +587,33 @@
           <div class="panel">
             <div class="panel-head">
               <h3>Deal Parameters</h3>
-              <span class="link" onclick="useMyWallet()" style="font-size:11.5px; color:var(--accent); font-weight:600; cursor:pointer;">Use My Wallet</span>
+              <span class="link" id="negPanelUseWallet" onclick="useMyWallet()" style="font-size:11.5px; color:var(--accent); font-weight:600; cursor:pointer;">Use My Wallet</span>
             </div>
-            <div style="padding: 20px;">
-              <div style="font-size:12.5px; color:var(--text-2); margin-bottom:18px; line-height:1.4;">
-                Submit deal parameters to the live SLA engine. Responses are computed from broker rules and can be filed into your local orchestrator — settlement on OKX.AI is handled by OKX infrastructure.
+            <div class="neg-panel-body">
+              <div class="neg-intro">
+                Submit deal parameters to the live SLA engine. Adjust pre-filled marketplace terms if needed, then evaluate.
               </div>
-              <div id="negTaskContext" style="display:none; margin-bottom:16px; padding:12px 14px; background:var(--bg-2); border-radius:8px; border:1px solid var(--border);">
-                <div style="font-size:11px; color:var(--text-2); text-transform:uppercase; font-family:var(--mono); margin-bottom:6px;">Marketplace task</div>
-                <div id="negTaskTitle" style="font-weight:600; font-size:14px; margin-bottom:4px;"></div>
-                <div id="negTaskMeta" style="font-size:12px; color:var(--text-2); font-family:var(--mono); line-height:1.5;"></div>
+              <div id="negTaskContext" class="neg-task-card" style="display:none;">
+                <div class="lbl">Marketplace task</div>
+                <div id="negTaskTitle" class="title"></div>
+                <div class="neg-task-rows">
+                  <div class="neg-task-row"><span class="k">Job</span><span class="v" id="negTaskJobRef">—</span></div>
+                  <div class="neg-task-row"><span class="k">Client</span><span class="v" id="negTaskClientRef">—</span></div>
+                  <div class="neg-task-row"><span class="k">Budget</span><span class="v" id="negTaskBudgetRef">—</span></div>
+                </div>
               </div>
               <div class="form-group">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                  <label style="font-size:11.5px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono);">Target Agent (ID or Wallet)</label>
-                  <button class="btn btn-ghost btn-sm" id="negUseMyWalletBtn" onclick="useMyWallet()" style="padding: 2px 8px; font-size: 10px; border-radius: 4px; font-weight: 500; font-family: var(--sans);">Use My Wallet</button>
+                <div class="neg-label-row">
+                  <label>Target Agent (ID or Wallet)</label>
+                  <button class="btn btn-ghost btn-sm" id="negUseMyWalletBtn" onclick="useMyWallet()" style="padding:4px 10px; font-size:11px;">Use My Wallet</button>
                 </div>
                 <input type="text" id="negClient" class="input" placeholder="e.g. 4038 or 0x..." value="" style="margin-bottom:12px;">
               </div>
               <div class="form-group">
                 <label style="font-size:11.5px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono); display:block; margin-bottom:6px;">Proposed Budget</label>
-                <div style="display: flex; gap: 8px; width: 100%; margin-bottom:12px;">
-                  <input type="number" step="any" id="negBudgetAmount" class="input" placeholder="e.g. 0.05" style="flex: 2; margin-bottom:0;">
-                  <select id="negTokenSelect" class="input" style="flex: 1; background: var(--bg-2); color: var(--text-0); border: 1px solid var(--border-strong); border-radius: 8px; padding: 0 10px; margin-bottom:0; outline:none; height:42px; font-family:var(--mono);">
+                <div class="neg-budget-row">
+                  <input type="number" step="any" id="negBudgetAmount" class="input" placeholder="e.g. 0.05">
+                  <select id="negTokenSelect" class="input" style="background:var(--bg-2); color:var(--text-0); border:1px solid var(--border-strong); border-radius:8px; padding:0 10px; outline:none; font-family:var(--mono);">
                     <option value="OKB">OKB</option>
                     <option value="USDC">USDC</option>
                     <option value="USDT">USDT</option>
@@ -596,7 +623,7 @@
               </div>
               <div class="form-group">
                 <label style="font-size:11.5px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono); display:block; margin-bottom:6px;">Delivery Deadline (in Days)</label>
-                <input type="number" id="negDeadlineDays" class="input" placeholder="e.g. 4" value="4" style="margin-bottom:16px;">
+                <input type="number" id="negDeadlineDays" class="input" placeholder="e.g. 4" value="4" style="margin-bottom:12px;">
               </div>
               <button class="btn btn-primary" id="btnEvaluateProposal" onclick="evaluateNegotiation()" style="width:100%; justify-content:center;">Evaluate Proposal Terms</button>
             </div>
@@ -1380,6 +1407,14 @@
   let skippedTaskIds = [];
   let taskFeedView = 'marketplace';
 
+  function formatJobRef(id) {
+    const s = String(id || '').trim();
+    if (!s) return '—';
+    if (/^0x[a-fA-F0-9]{40}$/i.test(s)) return s.slice(0, 8) + '…' + s.slice(-6);
+    if (s.length > 14) return s.slice(0, 10) + '…' + s.slice(-4);
+    return s;
+  }
+
   function formatTaskPayment(task) {
     if (task.tokenAmount != null && task.tokenSymbol) {
       const amt = String(task.tokenAmount).trim();
@@ -1568,16 +1603,27 @@
 
     const ctx = document.getElementById('negTaskContext');
     const titleEl = document.getElementById('negTaskTitle');
-    const metaEl = document.getElementById('negTaskMeta');
+    const jobRef = document.getElementById('negTaskJobRef');
+    const clientRef = document.getElementById('negTaskClientRef');
+    const budgetRef = document.getElementById('negTaskBudgetRef');
     const useWalletBtn = document.getElementById('negUseMyWalletBtn');
-    if (ctx && titleEl && metaEl && task.id) {
+    const panelUseWallet = document.getElementById('negPanelUseWallet');
+    if (ctx && titleEl && task.id) {
       ctx.style.display = 'block';
-      titleEl.textContent = task.title || `Task ${task.id}`;
-      metaEl.textContent = `Job #${task.id} · Client agent #${targetAgent} · ${formatTaskPayment(task)}`;
+      titleEl.textContent = task.title || `Task ${formatJobRef(task.id)}`;
+      if (jobRef) jobRef.textContent = formatJobRef(task.id);
+      if (clientRef) {
+        clientRef.textContent = /^\d+$/.test(targetAgent)
+          ? `Agent #${targetAgent}`
+          : (targetAgent ? formatJobRef(targetAgent) : '—');
+      }
+      if (budgetRef) budgetRef.textContent = formatTaskPayment(task);
       if (useWalletBtn) useWalletBtn.style.display = 'none';
+      if (panelUseWallet) panelUseWallet.style.display = 'none';
     } else if (ctx) {
       ctx.style.display = 'none';
       if (useWalletBtn) useWalletBtn.style.display = '';
+      if (panelUseWallet) panelUseWallet.style.display = '';
     }
 
     const thread = document.getElementById('negThread');
@@ -2273,7 +2319,9 @@
     const ctx = document.getElementById('negTaskContext');
     if (ctx) ctx.style.display = 'none';
     const useWalletBtn = document.getElementById('negUseMyWalletBtn');
+    const panelUseWallet = document.getElementById('negPanelUseWallet');
     if (useWalletBtn) useWalletBtn.style.display = '';
+    if (panelUseWallet) panelUseWallet.style.display = '';
     document.getElementById('negThread').innerHTML = '<div class="msg-row"><div class="avatar a">QA</div><div class="bubble">Awaiting SLA proposal parameters...</div></div>';
     document.getElementById('btnAccept').disabled = true;
     document.getElementById('negOutputPanel').style.display = 'none';
@@ -2289,7 +2337,9 @@
       const ctx = document.getElementById('negTaskContext');
       if (ctx) ctx.style.display = 'none';
       const useWalletBtn = document.getElementById('negUseMyWalletBtn');
+      const panelUseWallet = document.getElementById('negPanelUseWallet');
       if (useWalletBtn) useWalletBtn.style.display = '';
+      if (panelUseWallet) panelUseWallet.style.display = '';
     } else {
       showToast('No active operator wallet found in session. Please log in first.');
     }
