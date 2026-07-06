@@ -1490,10 +1490,23 @@
     lastOkxStatusLabel = '';
   }
 
-  function okxPortalLink(jobId) {
-    const id = String(jobId || '').trim();
-    if (!id) return '';
-    return `https://www.okx.ai/tasks/${id}`;
+  const OKX_TASKS_HOME = 'https://www.okx.ai/tasks';
+
+  function isNumericPortalTaskId(id) {
+    return /^\d+$/.test(String(id || '').trim());
+  }
+
+  function okxPortalLink(jobId, portalTaskId) {
+    const numeric = String(portalTaskId || jobId || '').trim();
+    if (isNumericPortalTaskId(numeric)) return `${OKX_TASKS_HOME}/${numeric}`;
+    return '';
+  }
+
+  function okxPortalHint(jobId, portalTaskId) {
+    const direct = okxPortalLink(jobId, portalTaskId);
+    if (direct) return `View task on OKX.AI: ${direct}`;
+    const ref = formatJobRef(jobId);
+    return `On-chain job ${ref} has no public web page. Log in at ${OKX_TASKS_HOME}, open My Tasks, and manage this negotiation there.`;
   }
 
   function formatOkxStatusLine(status) {
@@ -1526,8 +1539,7 @@
       if (announce || (status.statusLabel && status.statusLabel !== lastOkxStatusLabel)) {
         lastOkxStatusLabel = status.statusLabel || '';
         addMessage('QA', `${formatOkxStatusLine(status)}. ${status.aspNextStep}`, 'a');
-        const portal = status.portalUrl || okxPortalLink(jobId);
-        if (portal) addMessage('QA', `View on OKX.AI: ${portal}`, 'a');
+        addMessage('QA', okxPortalHint(jobId, activeNegotiationTask?.portalTaskId), 'a');
       }
       return status;
     } catch (err) {
@@ -2476,8 +2488,7 @@
               } else {
                 await pollOkxJobStatus(taskCtx.id, { announce: true });
               }
-              const portal = (contactData.status?.portalUrl) || okxPortalLink(taskCtx.id);
-              if (portal) addMessage('QA', `Track this job on OKX.AI: ${portal}`, 'a');
+              addMessage('QA', okxPortalHint(taskCtx.id, taskCtx.portalTaskId), 'a');
               logDaemon(`OKX.AI contact-user sent for job ${taskCtx.id}.`);
               btnAccept.textContent = 'Contact Sent';
               startOkxStatusPolling(taskCtx.id);

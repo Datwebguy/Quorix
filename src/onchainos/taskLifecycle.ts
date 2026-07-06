@@ -4,7 +4,10 @@ import {
   isContactUserPlainSuccess,
   parseOnchainOsJson,
 } from './exec';
+import { portalUrlForJob } from './portalUrls';
 import type { OkxCliSession } from './taskMarketplace';
+
+export { portalLinkHint, portalUrlForJob } from './portalUrls';
 
 type CliEnvelope<T> = { ok?: boolean; error?: string; data?: T; message?: string };
 
@@ -65,13 +68,6 @@ function statusCodeFromRaw(statusRaw: unknown): number | null {
 export function okxStatusLabel(code: number | null | undefined): string {
   if (code == null || !Number.isFinite(code)) return 'UNKNOWN';
   return STATUS_LABELS[code] ?? `STATUS_${code}`;
-}
-
-export function portalUrlForJob(jobId: string): string | undefined {
-  const id = String(jobId || '').trim();
-  if (/^\d+$/.test(id)) return `https://www.okx.ai/tasks/${id}`;
-  if (/^0x[a-fA-F0-9]+$/i.test(id)) return `https://www.okx.ai/tasks/${id}`;
-  return undefined;
 }
 
 /** ASP-facing guidance keyed to OKX.AI on-chain status codes. */

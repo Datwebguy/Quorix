@@ -1,5 +1,6 @@
 import { logErrorOnce, logWarnOnce } from '../utils/logDedupe';
 import { SemanticMatcher } from './matching';
+import { portalUrlForJob } from '../onchainos/portalUrls';
 import {
   OkxCliSession,
   recommendTask,
@@ -39,6 +40,8 @@ export interface DiscoveredMarketTask {
   blockNumber: string;
   txHash: string;
   portalUrl?: string;
+  /** Numeric OKX.AI listing id for public /tasks/{id} pages (separate from hex jobId). */
+  portalTaskId?: string;
 }
 
 export interface MarketplaceScanOptions {
@@ -64,11 +67,6 @@ function usdtAmountToAtomic(amount: string | undefined): string {
   const [whole, frac = ''] = trimmed.split('.');
   const padded = (frac + '000000').slice(0, 6);
   return `${whole || '0'}${padded}`.replace(/^0+(?=\d)/, '') || '0';
-}
-
-function portalUrlForJob(jobId: string): string | undefined {
-  if (/^\d+$/.test(jobId)) return `https://www.okx.ai/tasks/${jobId}`;
-  return undefined;
 }
 
 function parseCreateTime(value: string | number | undefined): number | undefined {
@@ -127,6 +125,15 @@ function mapCliRow(
   const marketplaceStatus =
     row.status != null && row.status !== '' ? Number(row.status) : undefined;
 
+  const portalTaskId = (() => {
+    const candidates = [row.portalTaskId, row.taskId, row.id].filter((v) => v != null && v !== '');
+    for (const c of candidates) {
+      const s = String(c).trim();
+      if (/^\d+$/.test(s) && s !== row.jobId) return s;
+    }
+    return /^\d+$/.test(row.jobId) ? row.jobId : undefined;
+  })();
+
   const match = matcher.matchTask({
     id: row.jobId,
     title,
@@ -162,7 +169,8 @@ function mapCliRow(
     source,
     blockNumber: '',
     txHash: '',
-    portalUrl: portalUrlForJob(row.jobId),
+    portalTaskId,
+    portalUrl: portalUrlForJob(row.jobId, portalTaskId),
   };
 }
 

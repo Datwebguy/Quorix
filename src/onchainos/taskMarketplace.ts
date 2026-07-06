@@ -11,6 +11,10 @@ export interface OkxCliSession {
 
 export interface OkxMarketplaceTaskRow {
   jobId: string;
+  /** Numeric listing id when API exposes it separately from hex jobId. */
+  portalTaskId?: string;
+  id?: string | number;
+  taskId?: string | number;
   title?: string;
   description?: string;
   descriptionSummary?: string;
@@ -57,8 +61,22 @@ function normalizeTasksPayload(data: unknown): OkxMarketplaceTaskRow[] {
   if (!Array.isArray(list)) return [];
   return list.map((row) => {
     const item = row as Record<string, unknown>;
+    const jobId = String(item.jobId ?? item.id ?? item.taskId ?? '');
+    const portalTaskId = (() => {
+      for (const key of ['portalTaskId', 'listingId', 'publicTaskId', 'taskId', 'id'] as const) {
+        const v = item[key];
+        if (v == null || v === '') continue;
+        const s = String(v).trim();
+        if (/^\d+$/.test(s) && s !== jobId) return s;
+      }
+      return undefined;
+    })();
+
     return {
-      jobId: String(item.jobId ?? item.id ?? item.taskId ?? ''),
+      jobId,
+      portalTaskId,
+      id: item.id != null ? String(item.id) : undefined,
+      taskId: item.taskId != null ? String(item.taskId) : undefined,
       title: item.title != null ? String(item.title) : undefined,
       description:
         item.description != null
