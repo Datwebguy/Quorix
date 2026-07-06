@@ -23,11 +23,11 @@
     --radius:14px; --radius-sm:8px;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  html,body{height:100%;}
-  body{background:var(--bg-0); color:var(--text-0); font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased;}
+  html,body{min-height:100%;}
+  body{background:var(--bg-0); color:var(--text-0); font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased; overflow-x:hidden;}
   a{text-decoration:none; color:inherit;}
 
-  #bgCanvas{position:fixed; inset:0; width:100vw; height:100vh; z-index:0; pointer-events:none;}
+  #bgCanvas{position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none;}
   .dash{position:relative; z-index:1; display:grid; grid-template-columns:240px 1fr; min-height:100vh;}
   .sidebar{background:rgba(19,19,19,0.88); backdrop-filter:blur(6px); border-right:1px solid var(--border); padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; max-height:100vh; min-height:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
   .main{background:transparent; min-width:0;}
@@ -230,14 +230,149 @@
   section.page{display:none;}
   section.page.active{display:block;}
 
-  @media(max-width:1000px){
-    .dash{grid-template-columns:1fr;}
-    .sidebar{display:none;}
-    .stat-grid, .row2{grid-template-columns:1fr;}
+  .menu-btn,.sidebar-overlay,.bottom-tab-bar{display:none;}
+  .table-scroll-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+
+  @media(max-width:900px){
+    .dash{grid-template-columns:1fr; display:block; min-height:auto;}
+    .main{min-width:0; width:100%;}
+
+    .sidebar{
+      display:flex;
+      position:fixed;
+      top:0; left:0;
+      width:min(280px, 86vw);
+      height:100vh;
+      height:100dvh;
+      max-height:none;
+      z-index:200;
+      transform:translateX(-100%);
+      transition:transform 0.25s ease;
+      box-shadow:8px 0 32px rgba(0,0,0,0.45);
+    }
+    .sidebar.open{transform:translateX(0);}
+    .sidebar-overlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.55);
+      z-index:199;
+    }
+    .sidebar-overlay.open{display:block;}
+
+    .menu-btn{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:44px; height:44px;
+      border-radius:10px;
+      background:var(--bg-2);
+      border:1px solid var(--border);
+      font-size:20px;
+      color:var(--text-0);
+      cursor:pointer;
+      flex-shrink:0;
+    }
+
+    .topbar{
+      flex-wrap:wrap;
+      gap:10px;
+      padding:12px 16px;
+      align-items:center;
+    }
+    .search{flex:1 1 0; width:auto; min-width:0; max-width:100%; min-height:44px; font-size:14px;}
+    .topbar-right{flex:1 1 100%; flex-wrap:wrap; gap:8px; justify-content:flex-start;}
+    .icon-btn{width:44px; height:44px;}
+
+    .body-pad{padding:16px 16px calc(72px + env(safe-area-inset-bottom, 0px));}
+    .stat-grid,.row2,.mcp-simple-form,.mcp-endpoint-grid{grid-template-columns:1fr;}
+    .page-head{flex-direction:column; align-items:flex-start; gap:12px;}
+    .page-head .btn{min-height:44px;}
+
+    .match-card{flex-direction:column; align-items:stretch; gap:12px;}
+    .match-actions{display:flex; gap:8px;}
+    .match-actions .btn{flex:1; min-height:44px; justify-content:center;}
+
+    .rep-score{flex-direction:column; align-items:center; text-align:center;}
+    .donut-row{flex-direction:column; align-items:center;}
+    .neg-actions{flex-direction:column;}
+    .neg-actions .btn{min-height:44px;}
+    .feed-tabs{flex-wrap:wrap;}
+    .feed-tab{flex:1; min-height:44px; display:inline-flex; align-items:center; justify-content:center;}
+
+    .nav-item{min-height:44px; padding:12px 10px;}
+    .btn,.btn-sm{min-height:44px;}
+    .btn-sm{padding:10px 16px; font-size:13px;}
+
     .mcp-tool-row{flex-direction:column; align-items:stretch;}
     .mcp-tool-actions{justify-content:space-between; margin-top:8px;}
-    .mcp-simple-form{grid-template-columns:1fr;}
-    .mcp-endpoint-grid{grid-template-columns:1fr;}
+
+    .bottom-tab-bar{
+      display:flex;
+      position:fixed;
+      bottom:0; left:0; right:0;
+      height:calc(64px + env(safe-area-inset-bottom, 0px));
+      padding-bottom:env(safe-area-inset-bottom, 0px);
+      background:rgba(19,19,19,0.96);
+      backdrop-filter:blur(12px);
+      border-top:1px solid var(--border);
+      z-index:100;
+    }
+    .bottom-tab-item{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:3px;
+      font-size:10px;
+      color:var(--text-2);
+      font-weight:500;
+      cursor:pointer;
+      padding:6px 4px;
+      border:none;
+      background:transparent;
+      font-family:var(--sans);
+      min-height:44px;
+    }
+    .bottom-tab-item .ic{font-size:17px; line-height:1; opacity:0.85;}
+    .bottom-tab-item.active{color:var(--accent);}
+    .bottom-tab-item.active .ic{opacity:1;}
+
+    .table-mobile-cards{min-width:0; width:100%;}
+    .table-mobile-cards thead{display:none;}
+    .table-mobile-cards tbody{display:block;}
+    .table-mobile-cards tr{
+      display:block;
+      margin:0 12px 12px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:var(--bg-2);
+      overflow:hidden;
+    }
+    .table-mobile-cards tr.tr-hover:hover td{background:transparent;}
+    .table-mobile-cards td{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:11px 14px;
+      border-bottom:1px solid var(--border);
+      text-align:right;
+    }
+    .table-mobile-cards td:last-child{border-bottom:none;}
+    .table-mobile-cards td::before{
+      content:attr(data-label);
+      font-family:var(--mono);
+      font-size:10px;
+      text-transform:uppercase;
+      color:var(--text-2);
+      font-weight:500;
+      text-align:left;
+      flex-shrink:0;
+    }
+    .table-mobile-cards tr td[colspan]{display:block; text-align:center;}
+    .table-mobile-cards tr td[colspan]::before{display:none;}
   }
 </style>
 </head>
@@ -250,9 +385,11 @@
   <button onclick="closeToast()" style="background:transparent; border:none; color:#B4B4B4; cursor:pointer; font-weight:700; font-size:14px; outline:none; margin-left:8px;">&times;</button>
 </div>
 
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()" aria-hidden="true"></div>
+
 <div class="dash">
 
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <a href="/" class="logo logo-link" aria-label="QuorixASP home"><img class="logo-mark" src="assets/logo/logo-header.png?v=3" width="28" height="28" alt="" aria-hidden="true">QuorixASP</a>
 
     <div class="nav-group">
@@ -287,6 +424,7 @@
 
   <div class="main">
     <div class="topbar">
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="Open navigation menu" onclick="toggleSidebar()">☰</button>
       <input class="search" id="topAddressSearch" placeholder="Scan Address reputation..." onchange="runTopSearch(this.value)">
       <div class="topbar-right">
         <span class="pill pill-warning" id="connectionPill">Connecting</span>
@@ -300,7 +438,7 @@
       <section class="page active" id="overview">
         <div class="page-head">
           <div><h2>Overview</h2><div class="sub" id="overviewSub">Loading your broker dashboard...</div></div>
-          <button class="btn btn-primary btn-sm" onclick="showPage('negotiation', document.querySelectorAll('.nav-item')[2])">Evaluate SLA</button>
+          <button class="btn btn-primary btn-sm" onclick="showPage('negotiation', navItemForPage('negotiation'))">Evaluate SLA</button>
         </div>
 
         <div class="stat-grid">
@@ -313,8 +451,9 @@
         <div class="row2">
           <!-- LIVE TASKS TABLE -->
           <div class="panel">
-            <div class="panel-head"><h3>Live Task Registry</h3><span class="link" onclick="showPage('matching', document.querySelectorAll('.nav-item')[1])">View feed →</span></div>
-            <table>
+            <div class="panel-head"><h3>Live Task Registry</h3><span class="link" onclick="showPage('matching', navItemForPage('matching'))">View feed →</span></div>
+            <div class="table-scroll-wrap">
+            <table class="table-mobile-cards">
               <thead>
                 <tr><th>Task ID</th><th>Counterparty</th><th>Budget</th><th>Status</th></tr>
               </thead>
@@ -322,6 +461,7 @@
                 <tr class="tr-hover"><td colspan="4" style="text-align:center;color:var(--text-2);padding:20px;">Connecting to local daemon task feed...</td></tr>
               </tbody>
             </table>
+            </div>
           </div>
 
           <!-- Reputation audit — populated only after runLiveAudit() -->
@@ -347,7 +487,8 @@
           <div class="panel-head">
             <h3>⚠️ Escrows Needing Attention</h3>
           </div>
-          <table>
+          <div class="table-scroll-wrap">
+          <table class="table-mobile-cards">
             <thead>
               <tr><th>Task ID</th><th>State</th><th>Time in State</th><th>Reason</th></tr>
             </thead>
@@ -355,6 +496,7 @@
               <tr class="tr-hover"><td colspan="4" style="text-align:center;color:var(--text-2);padding:20px;">No escrows need attention right now.</td></tr>
             </tbody>
           </table>
+          </div>
         </div>
 
       </section>
@@ -541,6 +683,24 @@
     </div>
   </div>
 </div>
+
+<nav class="bottom-tab-bar" id="bottomTabBar" aria-label="Primary navigation">
+  <button type="button" class="bottom-tab-item active" data-page="overview" onclick="showPage('overview', navItemForPage('overview'))">
+    <span class="ic">▣</span><span>Overview</span>
+  </button>
+  <button type="button" class="bottom-tab-item" data-page="matching" onclick="showPage('matching', navItemForPage('matching'))">
+    <span class="ic">◧</span><span>Tasks</span>
+  </button>
+  <button type="button" class="bottom-tab-item" data-page="negotiation" onclick="showPage('negotiation', navItemForPage('negotiation'))">
+    <span class="ic">⇄</span><span>Deal</span>
+  </button>
+  <button type="button" class="bottom-tab-item" data-page="analytics" onclick="showPage('analytics', navItemForPage('analytics'))">
+    <span class="ic">📈</span><span>Stats</span>
+  </button>
+  <button type="button" class="bottom-tab-item" data-page="more" onclick="toggleSidebar()">
+    <span class="ic">☰</span><span>More</span>
+  </button>
+</nav>
 
 <script>
   // Route Guard Check
@@ -1110,12 +1270,41 @@
     document.getElementById('mcpAdvancedToggle')?.classList.remove('open');
   }
 
+  function navItemForPage(id) {
+    return document.querySelector(`.nav-item[onclick*="showPage('${id}'"]`) || null;
+  }
+
+  function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    if (!sb || !ov) return;
+    const open = sb.classList.toggle('open');
+    ov.classList.toggle('open', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
+
+  function closeSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    if (sb) sb.classList.remove('open');
+    if (ov) ov.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
   // Page routing
   function showPage(id, el){
     document.querySelectorAll('section.page').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    if(el) el.classList.add('active');
+    if (el) el.classList.add('active');
+    else {
+      const nav = navItemForPage(id);
+      if (nav) nav.classList.add('active');
+    }
+    document.querySelectorAll('.bottom-tab-item').forEach(t => {
+      t.classList.toggle('active', t.dataset.page === id);
+    });
+    closeSidebar();
     window.scrollTo({top:0, behavior:'instant'});
     
     if (id === 'matching') renderTaskFeed();
@@ -1310,7 +1499,7 @@
       }
     }
     activeNegotiationTask = task;
-    showPage('negotiation', document.querySelectorAll('.nav-item')[2]);
+    showPage('negotiation', navItemForPage('negotiation'));
 
     const targetAgent = String(task.agentId || task.clientAddress || task.providerAddress || '').trim();
     const negClient = document.getElementById('negClient');
@@ -1631,7 +1820,7 @@
   function runTopSearch(val) {
     if (/^0x[a-fA-F0-9]{40}$/.test(val)) {
       document.getElementById('ovSearchAddress').value = val;
-      showPage('overview', document.querySelectorAll('.nav-item')[0]);
+      showPage('overview', navItemForPage('overview'));
       runLiveAudit();
     } else {
       showToast('Please enter a valid EVM address.');
@@ -1722,10 +1911,10 @@
           const displayStatus = task.status.replace(/_/g, ' ');
 
           tr.innerHTML = `
-            <td class="mono">#${task.id.slice(0, 8)}</td>
-            <td>${task.clientAddress.slice(0, 6) + '...' + task.clientAddress.slice(-4)}</td>
-            <td class="strong mono">${formattedBudget}</td>
-            <td><span class="pill ${statusPillClass}">${displayStatus}</span></td>
+            <td class="mono" data-label="Task ID">#${task.id.slice(0, 8)}</td>
+            <td data-label="Counterparty">${task.clientAddress.slice(0, 6) + '...' + task.clientAddress.slice(-4)}</td>
+            <td class="strong mono" data-label="Budget">${formattedBudget}</td>
+            <td data-label="Status"><span class="pill ${statusPillClass}">${displayStatus}</span></td>
           `;
           tableBody.appendChild(tr);
         });
@@ -1779,10 +1968,10 @@
           const timeFormatted = `${Math.floor(escrow.timeInStateSeconds)}s ago`;
 
           tr.innerHTML = `
-            <td class="mono">#${escrow.id.slice(0, 8)}</td>
-            <td><span class="pill ${statusPillClass}">${escrow.status}</span></td>
-            <td class="mono">${timeFormatted}</td>
-            <td style="color:var(--warning); font-weight:500;">${escrow.reason}</td>
+            <td class="mono" data-label="Task ID">#${escrow.id.slice(0, 8)}</td>
+            <td data-label="State"><span class="pill ${statusPillClass}">${escrow.status}</span></td>
+            <td class="mono" data-label="Time in State">${timeFormatted}</td>
+            <td data-label="Reason" style="color:var(--warning); font-weight:500;">${escrow.reason}</td>
           `;
           tableBody.appendChild(tr);
         });
