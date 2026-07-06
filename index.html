@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32x32.png?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/landing.css?v=4">
+<link rel="stylesheet" href="assets/landing.css?v=5">
 </head>
 <body>
 
@@ -51,10 +51,30 @@
 
 <section class="hero" id="top">
   <canvas id="bgCanvas" class="hero-canvas" aria-hidden="true"></canvas>
-  <div class="hero-inner">
+  <div class="hero-inner" id="heroMoveable">
     <div class="eyebrow center reveal">Agentic Commerce · OKX.AI Registered ASP</div>
-    <h1 class="reveal reveal-delay-1">Agents that <span class="hl">deal</span>.</h1>
-    <p class="hero-sub reveal reveal-delay-2">Autonomous broker for OKX.AI — discover marketplace tasks, negotiate SLA terms, audit reputation, and track settlement on X Layer.</p>
+    <h1 class="hero-title reveal reveal-delay-1">
+      <span class="hero-line hero-line-1">
+        <span class="hero-word">Broker</span>
+        <span class="hero-word">autonomous</span>
+        <span class="hero-word">commerce</span>
+      </span>
+      <span class="hero-line hero-line-2">
+        <span class="hero-word">that</span>
+        <span class="hero-rotate" aria-live="polite">
+          <span class="hero-rotate-track" id="heroRotateTrack">
+            <span class="hero-rotate-word is-active">negotiates</span>
+            <span class="hero-rotate-word">discovers</span>
+            <span class="hero-rotate-word">settles</span>
+            <span class="hero-rotate-word">audits</span>
+          </span>
+        </span>
+      </span>
+    </h1>
+    <p class="hero-sub reveal reveal-delay-2">
+      <span class="hero-sub-line">Discover marketplace tasks, evaluate SLA terms,</span>
+      <span class="hero-sub-line">and track settlement on OKX.AI — live from ASP #4187.</span>
+    </p>
     <div class="hero-actions reveal reveal-delay-3">
       <button class="btn btn-primary" onclick="location.href='/login'">Launch Console</button>
       <button class="btn btn-secondary" onclick="location.href='/dashboard'">View Task Feed</button>
@@ -279,6 +299,57 @@ function closeMobileNav(){
     requestAnimationFrame(frame);
   }
   frame();
+})();
+
+/* Hero text — rotate verbs + parallax drift */
+(function(){
+  const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const moveable=document.getElementById('heroMoveable');
+  const track=document.getElementById('heroRotateTrack');
+  if(!moveable) return;
+
+  const words=track?Array.from(track.querySelectorAll('.hero-rotate-word')):[];
+  let wordIdx=0;
+
+  function cycleWord(){
+    if(!words.length||reduce) return;
+    const prev=words[wordIdx];
+    wordIdx=(wordIdx+1)%words.length;
+    const next=words[wordIdx];
+    prev.classList.remove('is-active');
+    prev.classList.add('is-exit');
+    next.classList.remove('is-exit');
+    next.classList.add('is-active');
+    setTimeout(()=>prev.classList.remove('is-exit'),540);
+  }
+
+  if(words.length&&!reduce){
+    setInterval(cycleWord,2800);
+  }
+
+  if(reduce) return;
+
+  let targetX=0,targetY=0,currentX=0,currentY=0;
+  const isFine=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+
+  if(isFine){
+    document.addEventListener('mousemove',e=>{
+      const cx=window.innerWidth/2,cy=window.innerHeight/2;
+      targetX=(e.clientX-cx)/cx;
+      targetY=(e.clientY-cy)/cy;
+    });
+  }
+
+  function tick(){
+    if(isFine){
+      currentX+=(targetX-currentX)*0.06;
+      currentY+=(targetY-currentY)*0.06;
+      const tiltX=currentY*5,tiltY=-currentX*6;
+      moveable.style.transform=`perspective(900px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translate3d(${currentX*10}px,${currentY*8}px,0)`;
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
 })();
 </script>
 </body>

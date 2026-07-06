@@ -71,11 +71,29 @@ section{padding:88px 40px; border-top:1px solid var(--border); position:relative
 /* Hero */
 .hero{position:relative; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:120px 24px 80px; overflow:hidden;}
 .hero-canvas{position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none;}
-.hero-inner{position:relative; z-index:2; max-width:900px;}
-.hero h1{font-size:clamp(3.2rem,10vw,5.5rem); line-height:1.02; letter-spacing:-0.04em; font-weight:800; margin-bottom:20px;}
-.hero h1 .hl{color:var(--accent); display:inline-block; animation:hl-pulse 3s ease-in-out infinite;}
-@keyframes hl-pulse{0%,100%{text-shadow:0 0 0 transparent;}50%{text-shadow:0 0 40px rgba(255,77,0,0.25);}}
-.hero-sub{color:var(--text-1); font-size:clamp(1rem,2.5vw,1.15rem); max-width:42ch; margin:0 auto 32px; line-height:1.6;}
+.hero-inner{position:relative; z-index:2; max-width:900px; transform-style:preserve-3d; transition:transform 0.1s linear; will-change:transform;}
+.hero-title{font-size:clamp(2.6rem,8.5vw,5rem); line-height:1.06; letter-spacing:-0.04em; font-weight:800; margin-bottom:20px; display:flex; flex-direction:column; align-items:center; gap:0.08em;}
+.hero-line{display:flex; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:0.22em;}
+.hero-line-1{animation:hero-drift-a 7s ease-in-out infinite;}
+.hero-line-2{animation:hero-drift-b 8s ease-in-out infinite 0.4s;}
+@keyframes hero-drift-a{0%,100%{transform:translate3d(0,0,0);}50%{transform:translate3d(6px,-5px,0);}}
+@keyframes hero-drift-b{0%,100%{transform:translate3d(0,0,0);}50%{transform:translate3d(-5px,4px,0);}}
+.hero-word{display:inline-block; animation:hero-word-in 0.85s cubic-bezier(0.22,1,0.36,1) both;}
+.hero-line-1 .hero-word:nth-child(1){animation-delay:0.15s;}
+.hero-line-1 .hero-word:nth-child(2){animation-delay:0.28s;}
+.hero-line-1 .hero-word:nth-child(3){animation-delay:0.41s;}
+.hero-line-2 .hero-word:nth-child(1){animation-delay:0.52s;}
+@keyframes hero-word-in{from{opacity:0; transform:translateY(22px) rotateX(12deg);}to{opacity:1; transform:translate3d(0,0,0);}}
+.hero-rotate{position:relative; display:inline-block; vertical-align:baseline; min-width:9.5ch; height:1.08em; overflow:hidden; text-align:left;}
+.hero-rotate-track{position:relative; display:block; height:100%;}
+.hero-rotate-word{position:absolute; left:0; top:0; width:100%; color:var(--accent); font-weight:800; white-space:nowrap; opacity:0; transform:translateY(115%); transition:opacity 0.45s ease, transform 0.52s cubic-bezier(0.22,1,0.36,1); text-shadow:0 0 0 transparent; animation:hero-glow 3.2s ease-in-out infinite;}
+.hero-rotate-word.is-exit{opacity:0; transform:translateY(-115%);}
+.hero-rotate-word.is-active{opacity:1; transform:translateY(0); position:relative;}
+@keyframes hero-glow{0%,100%{text-shadow:0 0 0 transparent;}50%{text-shadow:0 0 36px rgba(255,77,0,0.28);}}
+.hero-sub{color:var(--text-1); font-size:clamp(1rem,2.5vw,1.15rem); max-width:46ch; margin:0 auto 32px; line-height:1.65; display:flex; flex-direction:column; gap:0.2em; align-items:center;}
+.hero-sub-line{display:inline-block; animation:hero-sub-float 6s ease-in-out infinite;}
+.hero-sub-line:nth-child(2){animation-delay:1.2s; animation-duration:7s;}
+@keyframes hero-sub-float{0%,100%{transform:translate3d(0,0,0);}50%{transform:translate3d(4px,-3px,0);}}
 .hero-actions{display:flex; gap:12px; flex-wrap:wrap; justify-content:center;}
 .hero-float-pills{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:40px;}
 .hero-pill{padding:8px 14px; border-radius:100px; background:rgba(255,255,255,0.04); border:1px solid var(--border); font-size:11px; font-family:var(--mono); color:var(--text-1); animation:float-y 4s ease-in-out infinite;}
@@ -165,5 +183,8 @@ section{padding:88px 40px; border-top:1px solid var(--border); position:relative
   .reveal{opacity:1; transform:none; transition:none;}
   .marquee-track{animation:none;}
   .hero-pill{animation:none;}
-  .hero h1 .hl{animation:none;}
+  .hero-line,.hero-word,.hero-sub-line,.hero-rotate-word{animation:none !important; transition:none !important;}
+  .hero-rotate-word{opacity:1; transform:none; position:relative;}
+  .hero-rotate-word:not(:first-child){display:none;}
+  .hero-inner{transform:none !important;}
 }
