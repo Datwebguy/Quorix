@@ -305,6 +305,7 @@ async function main() {
     { cleanPath: '/login', file: 'login.html' },
     { cleanPath: '/dashboard', file: 'dashboard.html' },
     { cleanPath: '/admin', file: 'admin.html' },
+    { cleanPath: '/faq', file: 'faq.html' },
   ];
 
   app.get('/', (_req: any, res: any) => {

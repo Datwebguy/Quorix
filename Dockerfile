@@ -26,7 +26,7 @@ RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
-COPY index.html login.html dashboard.html admin.html favicon.ico ./
+COPY index.html login.html dashboard.html admin.html faq.html favicon.ico ./
 COPY assets ./assets
 RUN npm run build && npm prune --omit=dev
 
