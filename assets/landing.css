@@ -87,20 +87,22 @@ section{padding:88px 40px; border-top:1px solid var(--border); position:relative
 
 /* Hero */
 .hero{position:relative; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:120px 24px 80px; overflow:hidden; background:transparent; border-top:none;}
-.hero-inner{position:relative; z-index:2; max-width:900px; width:100%;}
-.hero-title{font-size:clamp(2.4rem,7.5vw,4.6rem); line-height:1.12; letter-spacing:-0.03em; font-weight:800; margin-bottom:20px; display:flex; flex-direction:column; align-items:center; gap:0.12em; text-align:center; animation:hero-title-float 9s ease-in-out infinite;}
-@keyframes hero-title-float{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+.hero-inner{position:relative; z-index:2; max-width:900px; width:100%; will-change:transform;}
+.hero-title{font-size:clamp(2.4rem,7.5vw,4.6rem); line-height:1.12; letter-spacing:-0.03em; font-weight:800; margin-bottom:20px; display:flex; flex-direction:column; align-items:center; gap:0.12em; text-align:center;}
 .hero-line{display:block; width:100%; text-align:center; white-space:nowrap;}
-.hero-line-main{letter-spacing:-0.03em;}
-.hero-line-action{display:inline-flex; align-items:baseline; justify-content:center; gap:0.28em; white-space:nowrap;}
+.hero-line-main{letter-spacing:-0.03em; animation:hero-slide-right 7.5s ease-in-out infinite;}
+.hero-line-action{display:inline-flex; align-items:baseline; justify-content:center; gap:0.28em; white-space:nowrap; animation:hero-slide-left 8.5s ease-in-out infinite 0.35s;}
+@keyframes hero-slide-right{0%,100%{transform:translate3d(0,0,0);}50%{transform:translate3d(14px,-3px,0);}}
+@keyframes hero-slide-left{0%,100%{transform:translate3d(0,0,0);}50%{transform:translate3d(-12px,2px,0);}}
 .hero-static{color:var(--text-0);}
 .hero-rotate{display:inline-grid; grid-template-columns:1fr; align-items:baseline; justify-items:center; min-width:10.5ch; height:1.12em; overflow:hidden; vertical-align:baseline;}
 .hero-rotate-track{display:grid; grid-template-columns:1fr; grid-template-rows:1fr; width:100%; height:100%; place-items:center;}
-.hero-rotate-word{grid-area:1/1; color:var(--accent); font-weight:800; white-space:nowrap; opacity:0; transform:translateY(100%); transition:opacity 0.45s ease, transform 0.5s cubic-bezier(0.22,1,0.36,1); text-shadow:0 0 0 transparent; animation:hero-glow 3.2s ease-in-out infinite;}
-.hero-rotate-word.is-exit{opacity:0; transform:translateY(-100%);}
-.hero-rotate-word.is-active{opacity:1; transform:translateY(0);}
+.hero-rotate-word{grid-area:1/1; color:var(--accent); font-weight:800; white-space:nowrap; opacity:0; transform:translateX(115%); transition:opacity 0.42s ease, transform 0.52s cubic-bezier(0.22,1,0.36,1); text-shadow:0 0 0 transparent; animation:hero-glow 3.2s ease-in-out infinite;}
+.hero-rotate-word.is-exit{opacity:0; transform:translateX(-115%);}
+.hero-rotate-word.is-active{opacity:1; transform:translateX(0);}
 @keyframes hero-glow{0%,100%{text-shadow:0 0 0 transparent;}50%{text-shadow:0 0 36px rgba(255,77,0,0.28);}}
-.hero-sub{color:var(--text-1); font-size:clamp(1rem,2.5vw,1.15rem); max-width:48ch; margin:0 auto 32px; line-height:1.65; text-align:center;}
+.hero-sub{color:var(--text-1); font-size:clamp(1rem,2.5vw,1.15rem); max-width:48ch; margin:0 auto 32px; line-height:1.65; text-align:center; animation:hero-sub-slide 9s ease-in-out infinite 0.6s;}
+@keyframes hero-sub-slide{0%,100%{transform:translate3d(0,0,0);}50%{transform:translate3d(10px,-2px,0);}}
 .hero-actions{display:flex; gap:12px; flex-wrap:wrap; justify-content:center;}
 .hero-float-pills{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:40px;}
 .hero-pill{padding:8px 14px; border-radius:100px; background:rgba(255,255,255,0.04); border:1px solid var(--border); font-size:11px; font-family:var(--mono); color:var(--text-1); animation:float-y 4s ease-in-out infinite;}
@@ -204,7 +206,8 @@ section{padding:88px 40px; border-top:1px solid var(--border); position:relative
   .reveal{opacity:1; transform:none; transition:none;}
   .marquee-track{animation:none;}
   .hero-pill{animation:none;}
-  .hero-title,.hero-rotate-word{animation:none !important; transition:none !important;}
+  .hero-line-main,.hero-line-action,.hero-sub,.hero-rotate-word{animation:none !important; transition:none !important;}
   .hero-rotate-word{opacity:1; transform:none;}
   .hero-rotate-word:not(:first-child){display:none;}
+  .hero-inner{transform:none !important;}
 }

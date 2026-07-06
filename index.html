@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32x32.png?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/landing.css?v=8">
+<link rel="stylesheet" href="assets/landing.css?v=9">
 <script>try{var t=localStorage.getItem('quorix-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
 </head>
 <body>
@@ -56,7 +56,7 @@
 </nav>
 
 <section class="hero" id="top">
-  <div class="hero-inner">
+  <div class="hero-inner" id="heroMoveable">
     <div class="eyebrow center reveal">Agentic Commerce · OKX.AI Registered ASP</div>
     <h1 class="hero-title reveal reveal-delay-1">
       <span class="hero-line hero-line-main">Broker autonomous commerce</span>
@@ -255,13 +255,14 @@ function closeMobileNav(){
   },{passive:true});
 })();
 
-/* Hero rotating verb */
+/* Hero rotating verb + gentle horizontal drift */
 (function(){
   const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const moveable=document.getElementById('heroMoveable');
   const track=document.getElementById('heroRotateTrack');
-  if(!track) return;
-  const words=Array.from(track.querySelectorAll('.hero-rotate-word'));
+  const words=track?Array.from(track.querySelectorAll('.hero-rotate-word')):[];
   let wordIdx=0;
+
   function cycleWord(){
     if(!words.length||reduce) return;
     const prev=words[wordIdx];
@@ -274,6 +275,28 @@ function closeMobileNav(){
     setTimeout(()=>prev.classList.remove('is-exit'),540);
   }
   if(words.length&&!reduce) setInterval(cycleWord,2800);
+
+  if(reduce||!moveable) return;
+
+  let targetX=0,targetY=0,currentX=0,currentY=0;
+  const isFine=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+  if(isFine){
+    document.addEventListener('mousemove',e=>{
+      const cx=window.innerWidth/2,cy=window.innerHeight/2;
+      targetX=(e.clientX-cx)/cx;
+      targetY=(e.clientY-cy)/cy;
+    });
+  }
+
+  function tick(){
+    if(isFine){
+      currentX+=(targetX-currentX)*0.05;
+      currentY+=(targetY-currentY)*0.05;
+      moveable.style.transform=`translate3d(${currentX*16}px,${currentY*6}px,0)`;
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
 })();
 </script>
 <script src="assets/theme.js?v=1"></script>
