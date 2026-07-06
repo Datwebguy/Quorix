@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32x32.png?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/landing.css?v=11">
+<link rel="stylesheet" href="assets/landing.css?v=13">
 <script>try{var t=localStorage.getItem('quorix-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
 </head>
 <body>
@@ -56,24 +56,28 @@
 </nav>
 
 <section class="hero" id="top">
-  <div class="hero-inner" id="heroMoveable">
+  <div class="hero-inner">
     <div class="eyebrow center reveal">Agentic Commerce · OKX.AI Registered ASP</div>
-    <h1 class="hero-title reveal reveal-delay-1">
-      <span class="hero-line hero-line-main">Broker autonomous</span>
-      <span class="hero-line hero-line-main hero-line-main-2">commerce</span>
-      <span class="hero-line hero-line-action">
-        <span class="hero-static">that</span>
-        <span class="hero-rotate" aria-live="polite">
-          <span class="hero-rotate-track" id="heroRotateTrack">
-            <span class="hero-rotate-word is-active">negotiates</span>
-            <span class="hero-rotate-word">discovers</span>
-            <span class="hero-rotate-word">settles</span>
-            <span class="hero-rotate-word">audits</span>
+    <div class="hero-copy reveal reveal-delay-1">
+      <div class="hero-motion" id="heroMotion">
+        <h1 class="hero-title">
+          <span class="hero-line">Broker autonomous</span>
+          <span class="hero-line">commerce</span>
+          <span class="hero-line hero-line-action">
+            <span class="hero-static">that</span>
+            <span class="hero-rotate" aria-live="polite">
+              <span class="hero-rotate-track" id="heroRotateTrack">
+                <span class="hero-rotate-word is-active">negotiates</span>
+                <span class="hero-rotate-word">discovers</span>
+                <span class="hero-rotate-word">settles</span>
+                <span class="hero-rotate-word">audits</span>
+              </span>
+            </span>
           </span>
-        </span>
-      </span>
-    </h1>
-    <p class="hero-sub reveal reveal-delay-2">Discover marketplace tasks, evaluate SLA terms, and track settlement on OKX.AI, live from ASP #4187.</p>
+        </h1>
+        <p class="hero-sub">Discover marketplace tasks, evaluate SLA terms, and track settlement on OKX.AI, live from ASP #4187.</p>
+      </div>
+    </div>
     <div class="hero-actions reveal reveal-delay-3">
       <button class="btn btn-primary" onclick="location.href='/login'">Launch Console</button>
       <button class="btn btn-secondary" onclick="location.href='/dashboard'">View Task Feed</button>
@@ -258,13 +262,27 @@ function closeMobileNav(){
   },{passive:true});
 })();
 
-/* Hero rotating verb + gentle horizontal drift */
+/* Hero rotating verb — unified block stays centered */
 (function(){
   const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-  const moveable=document.getElementById('heroMoveable');
+  const motion=document.getElementById('heroMotion');
   const track=document.getElementById('heroRotateTrack');
   const words=track?Array.from(track.querySelectorAll('.hero-rotate-word')):[];
   let wordIdx=0;
+
+  if(track&&words.length){
+    const rotate=track.closest('.hero-rotate');
+    if(rotate){
+      let maxW=0;
+      const probe=document.createElement('span');
+      probe.style.cssText='position:absolute;visibility:hidden;white-space:nowrap;font-weight:800;font-size:inherit;font-family:inherit;';
+      probe.className='hero-rotate-word';
+      rotate.appendChild(probe);
+      words.forEach(w=>{probe.textContent=w.textContent;maxW=Math.max(maxW,probe.offsetWidth);});
+      probe.remove();
+      if(maxW>0) rotate.style.width=maxW+'px';
+    }
+  }
 
   function cycleWord(){
     if(!words.length||reduce) return;
@@ -279,7 +297,7 @@ function closeMobileNav(){
   }
   if(words.length&&!reduce) setInterval(cycleWord,2800);
 
-  if(reduce||!moveable) return;
+  if(reduce||!motion) return;
 
   let targetX=0,targetY=0,currentX=0,currentY=0;
   const isFine=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
@@ -292,11 +310,15 @@ function closeMobileNav(){
   }
 
   function tick(){
+    let dx=0,dy=0;
     if(isFine){
-      currentX+=(targetX-currentX)*0.05;
-      currentY+=(targetY-currentY)*0.05;
-      moveable.style.transform=`translate3d(${currentX*16}px,${currentY*6}px,0)`;
+      currentX+=(targetX-currentX)*0.04;
+      currentY+=(targetY-currentY)*0.04;
+      dx=currentX*4;
+      dy=currentY*3;
     }
+    motion.style.setProperty('--hero-dx',dx+'px');
+    motion.style.setProperty('--hero-dy',dy+'px');
     requestAnimationFrame(tick);
   }
   tick();
