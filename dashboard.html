@@ -1428,6 +1428,27 @@
   let skippedTaskIds = [];
   let taskFeedView = 'marketplace';
 
+  function skipStorageKey() {
+    const w = (connectedUserWallet || localStorage.getItem('operatorWallet') || 'anon').toLowerCase();
+    return `quorix-skipped-tasks:${w}`;
+  }
+
+  function loadSkippedTaskIds() {
+    try {
+      const raw = localStorage.getItem(skipStorageKey());
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function persistSkippedTaskIds() {
+    try {
+      localStorage.setItem(skipStorageKey(), JSON.stringify(skippedTaskIds));
+    } catch {}
+  }
+
   function formatJobRef(id) {
     const s = String(id || '').trim();
     if (!s) return '·';
@@ -1729,9 +1750,12 @@
 
   function skipTask(taskId, btn) {
     const card = btn.closest('.match-card');
+    if (!skippedTaskIds.includes(taskId)) {
+      skippedTaskIds.push(taskId);
+      persistSkippedTaskIds();
+    }
     card.style.opacity = 0;
     setTimeout(() => {
-      skippedTaskIds.push(taskId);
       card.remove();
       if (document.querySelectorAll('.match-card').length === 0) {
         renderTaskFeed();
@@ -1740,6 +1764,7 @@
   }
 
   let connectedUserWallet = operatorWallet || "";
+  skippedTaskIds = loadSkippedTaskIds();
 
   // Check daemon status and logs periodically on DOM load
   async function loadBrokerStatus() {
@@ -2348,7 +2373,13 @@
                 description: taskCtx.description || 'Filed from QuorixASP negotiation console'
               })
             });
-            const submitData = await submitRes.json();
+            const submitData = await submitRes.json().catch(() => ({}));
+            if (!submitRes.ok || submitData.error) {
+              throw new Error(submitData.error || `Server returned status ${submitRes.status}`);
+            }
+            if (!submitData.task || !submitData.task.id) {
+              throw new Error('Server did not return a tracked task id');
+            }
             addMessage('QA', 'Agreement filed locally. Complete payment through OKX.AI to start the job.', 'a');
             logDaemon(`Task ${submitData.task.id} is now tracked.`);
             btnAccept.textContent = 'Agreement Filed';

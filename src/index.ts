@@ -81,6 +81,12 @@ function isValidWalletAddress(wallet: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(wallet);
 }
 
+/** OKX marketplace tasks often expose buyer agent ID (e.g. 4038) instead of a wallet. */
+function isValidClientRef(ref: string): boolean {
+  const v = String(ref || '').trim();
+  return isValidWalletAddress(v) || /^\d+$/.test(v);
+}
+
 // Helper to determine deterministic HOME directory per user
 function getHomeDirForEmail(email: string): string {
   const normalized = email.trim().toLowerCase();
@@ -854,8 +860,8 @@ async function main() {
     try {
       const { clientAddress, budgetWei, deadlineTimestamp, id, title, description, paymentToken, expectedProofHash } = req.body;
 
-      if (!clientAddress || !isValidWalletAddress(clientAddress)) {
-        return res.status(400).json({ error: 'Valid clientAddress is required' });
+      if (!clientAddress || !isValidClientRef(clientAddress)) {
+        return res.status(400).json({ error: 'Valid clientAddress (wallet or OKX agent ID) is required' });
       }
       if (!budgetWei || !/^\d+$/.test(String(budgetWei)) || BigInt(budgetWei) <= 0n) {
         return res.status(400).json({ error: 'Valid budgetWei (positive integer string) is required' });

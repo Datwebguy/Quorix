@@ -90,14 +90,19 @@ export class QuorixOrchestrator {
     }
     console.log(`[Orchestrator] Match Succeeded. Capabilities: [${match.matchedCapabilities.join(', ')}]. Score: ${match.score.toFixed(2)}`);
 
-    // Step 2: Reputation Audit on X Layer via logs
-    const clientRep = await this.repScorer.getAgentReputation(task.clientAddress, this.blockchainClient.publicClient);
-    if (!clientRep.isApproved) {
-      console.warn(`[Orchestrator] Client ${task.clientAddress} failed reputation audit. Rejecting task ${taskId}.`);
-      this.updateJobStatus(taskId, 'REJECTED_REPUTATION');
-      return false;
+    // Step 2: Reputation Audit on X Layer via logs (wallet only — marketplace may supply agent ID)
+    const clientIsWallet = /^0x[a-fA-F0-9]{40}$/i.test(task.clientAddress);
+    if (clientIsWallet) {
+      const clientRep = await this.repScorer.getAgentReputation(task.clientAddress, this.blockchainClient.publicClient);
+      if (!clientRep.isApproved) {
+        console.warn(`[Orchestrator] Client ${task.clientAddress} failed reputation audit. Rejecting task ${taskId}.`);
+        this.updateJobStatus(taskId, 'REJECTED_REPUTATION');
+        return false;
+      }
+      console.log(`[Orchestrator] Client reputation approved (Rating: ${clientRep.averageRating.toFixed(1)}/5, DisputeRate: ${(clientRep.disputeRate * 100).toFixed(0)}%).`);
+    } else {
+      console.log(`[Orchestrator] Client ref ${task.clientAddress} is an OKX agent ID — skipping on-chain wallet reputation until escrow.`);
     }
-    console.log(`[Orchestrator] Client reputation approved (Rating: ${clientRep.averageRating.toFixed(1)}/5, DisputeRate: ${(clientRep.disputeRate * 100).toFixed(0)}%).`);
 
     // Step 3: Terms & SLA Negotiation
     const evaluation = await this.negEngine.evaluateTaskProposal(task);
