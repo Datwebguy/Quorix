@@ -157,8 +157,8 @@ section{padding:88px 40px; border-top:1px solid var(--border); position:relative
 .footer-col ul{list-style:none; display:flex; flex-direction:column; gap:10px;}
 .footer-col a{font-size:13px; color:var(--text-1); transition:color 0.2s;}
 .footer-col a:hover{color:var(--accent);}
-.footer-bottom{max-width:1120px; margin:0 auto; padding-top:24px; border-top:1px solid var(--border); display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; font-size:12px; color:var(--text-2);}
-.footer-bottom .contracts{font-family:var(--mono); font-size:10px;}
+.footer-bottom{max-width:1120px; margin:0 auto; padding-top:24px; border-top:1px solid var(--border); text-align:center; font-size:12px; color:var(--text-2);}
+.footer-col,.footer-brand{min-width:0;}
 
 /* FAQ page */
 .faq-page{padding-top:120px; padding-bottom:80px; max-width:760px; margin:0 auto;}
@@ -179,13 +179,23 @@ section{padding:88px 40px; border-top:1px solid var(--border); position:relative
   section{padding:64px 20px;}
   .feat-grid,.eco-grid{grid-template-columns:1fr;}
   .how-grid{grid-template-columns:1fr;}
-  .footer-grid{grid-template-columns:1fr 1fr; gap:32px;}
-  .footer-brand{grid-column:1 / -1;}
-  .site-footer{padding:48px 20px 24px;}
-  .footer-bottom{flex-direction:column;}
+  .site-footer{padding:40px 16px 20px;}
+  .footer-grid{grid-template-columns:1.15fr 1fr 1fr 1fr; gap:14px 10px; margin-bottom:28px;}
+  .footer-brand p{display:none;}
+  .footer-brand .logo{margin-bottom:8px; font-size:14px;}
+  .footer-brand .logo-mark{width:26px; height:26px;}
+  .footer-col h5{font-size:9px; margin-bottom:10px; letter-spacing:.08em;}
+  .footer-col ul{gap:6px;}
+  .footer-col a{font-size:11px; line-height:1.35;}
+  .footer-social a{width:34px; height:34px;}
 }
 @media(max-width:480px){
-  .footer-grid{grid-template-columns:1fr;}
+  .footer-grid{grid-template-columns:1.05fr 1fr 1fr 1fr; gap:10px 6px;}
+  .footer-col h5{font-size:8.5px; margin-bottom:8px;}
+  .footer-col ul{gap:5px;}
+  .footer-col a{font-size:10px;}
+  .footer-brand .logo{font-size:13px;}
+  .footer-brand .logo-mark{width:22px; height:22px;}
   .hero-line{white-space:normal;}
   .hero-line-main{font-size:clamp(2rem,9vw,2.6rem);}
   .hero-line-action{flex-wrap:wrap; white-space:normal;}
