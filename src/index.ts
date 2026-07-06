@@ -2,6 +2,11 @@ import { SemanticMatcher } from './discovery/matching';
 import { MarketplaceScanner } from './discovery/marketplace';
 import type { OkxCliSession } from './onchainos/taskMarketplace';
 import { walletIsLoggedIn } from './onchainos/taskMarketplace';
+import {
+  contactUserForTask,
+  fetchOkxTaskStatus,
+  isRealMarketplaceJobId,
+} from './onchainos/taskLifecycle';
 import { ReputationScorer } from './reputation/scorer';
 import { NegotiationEngine } from './negotiation/engine';
 import { XLayerClient } from './escrow/contract';
@@ -854,6 +859,60 @@ async function main() {
     }
 
     res.json({ escrows: flagged });
+  });
+
+  app.get('/api/okx-task/:jobId/status', async (req: any, res: any) => {
+    try {
+      const jobId = String(req.params.jobId || '').trim();
+      if (!isRealMarketplaceJobId(jobId)) {
+        return res.status(400).json({ error: 'Invalid OKX marketplace job id' });
+      }
+      const wallet = typeof req.query.wallet === 'string' ? req.query.wallet.trim() : '';
+      if (!wallet || !isValidWalletAddress(wallet)) {
+        return res.status(400).json({ error: 'Valid wallet query parameter required' });
+      }
+      const session = await resolveVisitorCliSession(wallet);
+      if (!session?.agentId) {
+        return res.status(403).json({
+          error: 'No OKX.AI agent identity for this wallet. Register an ASP agent to take marketplace jobs.',
+        });
+      }
+      const status = await fetchOkxTaskStatus(session, jobId);
+      res.json({ ok: true, status });
+    } catch (err: any) {
+      const message = err?.message || String(err);
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.post('/api/okx-task/:jobId/contact', async (req: any, res: any) => {
+    try {
+      const jobId = String(req.params.jobId || '').trim();
+      if (!isRealMarketplaceJobId(jobId)) {
+        return res.status(400).json({ error: 'Invalid OKX marketplace job id' });
+      }
+      const wallet = typeof req.body?.wallet === 'string' ? req.body.wallet.trim() : '';
+      if (!wallet || !isValidWalletAddress(wallet)) {
+        return res.status(400).json({ error: 'Valid wallet address required' });
+      }
+      const session = await resolveVisitorCliSession(wallet);
+      if (!session?.agentId) {
+        return res.status(403).json({
+          error: 'No OKX.AI agent identity for this wallet. Register an ASP agent to contact task publishers.',
+        });
+      }
+      const contact = await contactUserForTask(session, jobId);
+      let status: Awaited<ReturnType<typeof fetchOkxTaskStatus>> | undefined;
+      try {
+        status = await fetchOkxTaskStatus(session, jobId);
+      } catch {
+        status = undefined;
+      }
+      res.json({ ok: true, contact, status });
+    } catch (err: any) {
+      const message = err?.message || String(err);
+      res.status(500).json({ error: message });
+    }
   });
 
   app.post('/api/tasks', async (req: any, res: any) => {

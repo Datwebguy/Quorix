@@ -1472,6 +1472,86 @@
     return '·';
   }
 
+  let okxStatusPollTimer = null;
+  let lastOkxStatusLabel = '';
+
+  function isMarketplaceJob(task) {
+    if (!task?.id) return false;
+    const id = String(task.id).trim();
+    if (!id || id.startsWith('neg-') || id.startsWith('filed-')) return false;
+    return /^\d+$/.test(id) || /^0x[a-fA-F0-9]+$/i.test(id);
+  }
+
+  function stopOkxStatusPolling() {
+    if (okxStatusPollTimer) {
+      clearInterval(okxStatusPollTimer);
+      okxStatusPollTimer = null;
+    }
+    lastOkxStatusLabel = '';
+  }
+
+  function okxPortalLink(jobId) {
+    const id = String(jobId || '').trim();
+    if (!id) return '';
+    return `https://www.okx.ai/tasks/${id}`;
+  }
+
+  function formatOkxStatusLine(status) {
+    if (!status) return '';
+    const budget =
+      status.tokenAmount && status.tokenSymbol
+        ? `${status.tokenAmount} ${status.tokenSymbol}`
+        : '';
+    const parts = [
+      `OKX.AI job ${formatJobRef(status.jobId)}`,
+      status.statusLabel ? `status ${status.statusLabel}` : '',
+      budget ? `budget ${budget}` : '',
+    ].filter(Boolean);
+    return parts.join(' · ');
+  }
+
+  async function pollOkxJobStatus(jobId, { announce = false } = {}) {
+    if (!connectedUserWallet || !isMarketplaceJob({ id: jobId })) return null;
+    try {
+      const res = await fetch(
+        `${LOCAL_DAEMON_URL}/api/okx-task/${encodeURIComponent(jobId)}/status?wallet=${encodeURIComponent(connectedUserWallet)}`
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        if (announce) addMessage('QA', `OKX.AI status check failed: ${data.error || res.status}`, 'a');
+        return null;
+      }
+      const status = data.status;
+      if (!status) return null;
+      if (announce || (status.statusLabel && status.statusLabel !== lastOkxStatusLabel)) {
+        lastOkxStatusLabel = status.statusLabel || '';
+        addMessage('QA', `${formatOkxStatusLine(status)}. ${status.aspNextStep}`, 'a');
+        const portal = status.portalUrl || okxPortalLink(jobId);
+        if (portal) addMessage('QA', `View on OKX.AI: ${portal}`, 'a');
+      }
+      return status;
+    } catch (err) {
+      if (announce) addMessage('QA', `OKX.AI status check failed: ${err.message}`, 'a');
+      return null;
+    }
+  }
+
+  function startOkxStatusPolling(jobId) {
+    stopOkxStatusPolling();
+    if (!isMarketplaceJob({ id: jobId })) return;
+    okxStatusPollTimer = setInterval(() => {
+      pollOkxJobStatus(jobId);
+    }, 12000);
+  }
+
+  function setAcceptButtonForTask(task) {
+    const btnAccept = document.getElementById('btnAccept');
+    if (!btnAccept) return;
+    btnAccept.textContent = isMarketplaceJob(task)
+      ? 'Contact Client on OKX.AI'
+      : 'File Agreement';
+  }
+
   function formatPostedAgo(task) {
     const ts = Number(task.createTime || task.deadlineTimestamp || 0);
     if (!ts) return '·';
@@ -1641,6 +1721,8 @@
       }
       document.getElementById('negOutputPanel').style.display = 'none';
       document.getElementById('btnAccept').disabled = true;
+      setAcceptButtonForTask(null);
+      stopOkxStatusPolling();
     }
   }
 
@@ -1709,6 +1791,8 @@
       }
       document.getElementById('negOutputPanel').style.display = 'none';
       document.getElementById('btnAccept').disabled = true;
+      setAcceptButtonForTask(task);
+      stopOkxStatusPolling();
     }
   }
 
@@ -2353,11 +2437,59 @@
 
       const data = await response.json();
 
-      const setupEscrowLock = (priceWei, deadlineTime) => {
+      const marketplaceJob = isMarketplaceJob(taskCtx);
+      const proceedLabel = marketplaceJob
+        ? 'Contact Client on OKX.AI'
+        : 'File Agreement';
+
+      const setupProceedAction = (priceWei, deadlineTime) => {
         btnAccept.onclick = async () => {
           btnAccept.disabled = true;
           const oldAcceptText = btnAccept.textContent;
-          btnAccept.textContent = 'Locking...';
+          btnAccept.textContent = marketplaceJob ? 'Contacting...' : 'Locking...';
+
+          if (marketplaceJob) {
+            addMessage('QA', `Opening OKX.AI negotiation for job ${formatJobRef(taskCtx.id)}...`, 'a');
+            if (!connectedUserWallet) {
+              addMessage('QA', 'Connect your wallet first so QuorixASP can use your OKX.AI ASP identity.', 'a');
+              btnAccept.disabled = false;
+              btnAccept.textContent = oldAcceptText;
+              return;
+            }
+            try {
+              const contactRes = await fetch(
+                `${LOCAL_DAEMON_URL}/api/okx-task/${encodeURIComponent(taskCtx.id)}/contact`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ wallet: connectedUserWallet }),
+                }
+              );
+              const contactData = await contactRes.json().catch(() => ({}));
+              if (!contactRes.ok || contactData.error) {
+                throw new Error(contactData.error || `Server returned status ${contactRes.status}`);
+              }
+              addMessage('QA', contactData.contact?.message || 'Negotiation channel opened on OKX.AI.', 'a');
+              if (contactData.status) {
+                lastOkxStatusLabel = contactData.status.statusLabel || '';
+                addMessage('QA', `${formatOkxStatusLine(contactData.status)}. ${contactData.status.aspNextStep}`, 'a');
+              } else {
+                await pollOkxJobStatus(taskCtx.id, { announce: true });
+              }
+              const portal = (contactData.status?.portalUrl) || okxPortalLink(taskCtx.id);
+              if (portal) addMessage('QA', `Track this job on OKX.AI: ${portal}`, 'a');
+              logDaemon(`OKX.AI contact-user sent for job ${taskCtx.id}.`);
+              btnAccept.textContent = 'Contact Sent';
+              startOkxStatusPolling(taskCtx.id);
+              syncDaemonTasks();
+            } catch (err) {
+              addMessage('QA', `OKX.AI contact failed: ${err.message}`, 'a');
+              btnAccept.disabled = false;
+              btnAccept.textContent = oldAcceptText;
+            }
+            return;
+          }
+
           addMessage('QA', 'Filing agreement with QuorixASP...', 'a');
           try {
             const submitRes = await fetch(`${LOCAL_DAEMON_URL}/api/tasks`, {
@@ -2380,11 +2512,9 @@
             if (!submitData.task || !submitData.task.id) {
               throw new Error('Server did not return a tracked task id');
             }
-            addMessage('QA', 'Agreement filed locally. Complete payment through OKX.AI to start the job.', 'a');
+            addMessage('QA', 'Agreement filed locally. The counterparty must complete payment through OKX.AI to start the job.', 'a');
             logDaemon(`Task ${submitData.task.id} is now tracked.`);
             btnAccept.textContent = 'Agreement Filed';
-            
-            // Re-sync tasks immediately
             syncDaemonTasks();
           } catch (err) {
             addMessage('QA', `Error submitting task: ${err.message}`, 'a');
@@ -2397,17 +2527,22 @@
       if (data.status === 'ACCEPTED') {
         addMessage('QA', `Terms accepted. ${data.reason}`, 'a');
         addMessage('QA', `Deliverables:\n- ${data.proposal.deliverables.join('\n- ')}`, 'a');
-        addMessage('CL', 'Ready to proceed. Click File Agreement to track this deal locally.', 'b');
+        addMessage('CL', marketplaceJob
+          ? `SLA terms look good. Click ${proceedLabel} to open the live OKX.AI negotiation with the task publisher.`
+          : 'Ready to proceed. Click File Agreement to track this deal locally.', 'b');
         btnAccept.disabled = false;
-        setupEscrowLock(data.proposal.priceWei, deadline);
+        btnAccept.textContent = proceedLabel;
+        setupProceedAction(data.proposal.priceWei, deadline);
       } else if (data.status === 'COUNTERED') {
         addMessage('QA', `Counter offer: ${data.reason}`, 'a');
         addMessage('QA', `Suggested terms:\n- Price: ${(Number(data.proposal.priceWei) / 1e18).toFixed(2)} OKB\n- Timeline: ${data.proposal.timelineDays} days\n- Deliverables:\n  * ${data.proposal.deliverables.join('\n  * ')}`, 'a');
-        addMessage('CL', 'Counter offer looks good. Click File Agreement when ready.', 'b');
+        addMessage('CL', marketplaceJob
+          ? `Counter offer looks good. Click ${proceedLabel} when ready.`
+          : 'Counter offer looks good. Click File Agreement when ready.', 'b');
         btnAccept.disabled = false;
-        
+        btnAccept.textContent = proceedLabel;
         const counterDeadline = Math.floor(Date.now() / 1000) + Math.floor(data.proposal.timelineDays * 24 * 3600);
-        setupEscrowLock(data.proposal.priceWei, counterDeadline);
+        setupProceedAction(data.proposal.priceWei, counterDeadline);
       } else {
         addMessage('QA', `Proposal declined. ${data.reason}`, 'a');
         btnAccept.disabled = true;
@@ -2431,6 +2566,7 @@
 
 
   function resetThread() {
+    stopOkxStatusPolling();
     activeNegotiationTask = null;
     prepareManualNegotiationUI({ resetThread: true, resetForm: true });
   }
