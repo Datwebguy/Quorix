@@ -88,10 +88,11 @@ section{padding:88px 40px; border-top:1px solid var(--border); position:relative
 /* Hero */
 .hero{position:relative; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:120px 24px 80px; overflow:hidden; background:transparent; border-top:none;}
 .hero-inner{position:relative; z-index:2; max-width:900px; width:100%; will-change:transform;}
-.hero-title{font-size:clamp(2.4rem,7.5vw,4.6rem); line-height:1.12; letter-spacing:-0.03em; font-weight:800; margin-bottom:20px; display:flex; flex-direction:column; align-items:center; gap:0.12em; text-align:center;}
-.hero-line{display:block; width:100%; text-align:center; white-space:nowrap;}
+.hero-title{font-size:clamp(2.2rem,6.5vw,4rem); line-height:1.14; letter-spacing:-0.03em; font-weight:800; margin-bottom:20px; display:flex; flex-direction:column; align-items:center; gap:0.06em; text-align:center; max-width:18ch;}
+.hero-line{display:block; width:100%; text-align:center;}
 .hero-line-main{letter-spacing:-0.03em; animation:hero-slide-right 7.5s ease-in-out infinite;}
-.hero-line-action{display:inline-flex; align-items:baseline; justify-content:center; gap:0.28em; white-space:nowrap; animation:hero-slide-left 8.5s ease-in-out infinite 0.35s;}
+.hero-line-main-2{animation:hero-slide-right 7.5s ease-in-out infinite 0.2s;}
+.hero-line-action{display:inline-flex; align-items:baseline; justify-content:center; gap:0.28em; white-space:nowrap; animation:hero-slide-left 8.5s ease-in-out infinite 0.35s; margin-top:0.04em;}
 @keyframes hero-slide-right{0%,100%{transform:translate3d(0,0,0);}50%{transform:translate3d(14px,-3px,0);}}
 @keyframes hero-slide-left{0%,100%{transform:translate3d(0,0,0);}50%{transform:translate3d(-12px,2px,0);}}
 .hero-static{color:var(--text-0);}
@@ -198,8 +199,7 @@ section{padding:88px 40px; border-top:1px solid var(--border); position:relative
   .footer-col a{font-size:10px;}
   .footer-brand .logo{font-size:13px;}
   .footer-brand .logo-mark{width:22px; height:22px;}
-  .hero-line{white-space:normal;}
-  .hero-line-main{font-size:clamp(2rem,9vw,2.6rem);}
+  .hero-title{max-width:100%; font-size:clamp(1.9rem,8vw,2.5rem);}
   .hero-line-action{flex-wrap:wrap; white-space:normal;}
 }
 @media (prefers-reduced-motion:reduce){
