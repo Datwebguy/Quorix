@@ -155,6 +155,9 @@
   .neg-budget-row .input{margin-bottom:0;}
   .neg-label-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px; flex-wrap:wrap;}
   .neg-label-row label{font-size:11.5px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono);}
+  .neg-empty-state{display:none; margin-bottom:16px; padding:14px 16px; background:var(--accent-dim); border:1px solid rgba(255,77,0,0.25); border-radius:10px;}
+  .neg-empty-state p{font-size:13px; color:var(--text-1); line-height:1.5; margin-bottom:12px;}
+  .neg-empty-state .btn{width:100%; justify-content:center;}
 
   .escrow-track{display:flex; justify-content:space-between; padding:22px 18px 8px;}
   .escrow-step{text-align:center; flex:1;}
@@ -590,8 +593,12 @@
               <span class="link" id="negPanelUseWallet" onclick="useMyWallet()" style="font-size:11.5px; color:var(--accent); font-weight:600; cursor:pointer;">Use My Wallet</span>
             </div>
             <div class="neg-panel-body">
-              <div class="neg-intro">
-                Submit deal parameters to the live SLA engine. Adjust pre-filled marketplace terms if needed, then evaluate.
+              <div class="neg-intro" id="negIntroText">
+                Enter deal parameters manually, or browse the Task Feed and click Negotiate on a marketplace task to pre-fill terms.
+              </div>
+              <div id="negEmptyState" class="neg-empty-state" style="display:block;">
+                <p>No marketplace task selected. Browse open tasks and click <strong>Negotiate</strong> to load job details here — or fill in the fields below for a manual SLA proposal.</p>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="showPage('matching', navItemForPage('matching'))">Browse Task Feed</button>
               </div>
               <div id="negTaskContext" class="neg-task-card" style="display:none;">
                 <div class="lbl">Marketplace task</div>
@@ -613,10 +620,10 @@
                 <label style="font-size:11.5px; text-transform:uppercase; color:var(--text-2); font-family:var(--mono); display:block; margin-bottom:6px;">Proposed Budget</label>
                 <div class="neg-budget-row">
                   <input type="number" step="any" id="negBudgetAmount" class="input" placeholder="e.g. 0.05">
-                  <select id="negTokenSelect" class="input" style="background:var(--bg-2); color:var(--text-0); border:1px solid var(--border-strong); border-radius:8px; padding:0 10px; outline:none; font-family:var(--mono);">
-                    <option value="OKB">OKB</option>
+                  <select id="negTokenSelect" class="input" style="background:var(--bg-2); color:var(--text-0); border:1px solid var(--border-strong); border-radius:8px; padding:0 10px; outline:none; font-family:var(--mono); min-width:88px;">
+                    <option value="USDT" selected>USDT</option>
                     <option value="USDC">USDC</option>
-                    <option value="USDT">USDT</option>
+                    <option value="OKB">OKB</option>
                     <option value="ETH">ETH</option>
                   </select>
                 </div>
@@ -1380,6 +1387,7 @@
     window.scrollTo({top:0, behavior:'instant'});
     
     if (id === 'matching') renderTaskFeed();
+    if (id === 'negotiation') syncNegotiationPage();
     if (id === 'analytics') syncAnalytics();
     if (id === 'mcp') renderMcpTools();
     if (id === 'dev-api') renderDevToolSelect();
@@ -1555,6 +1563,129 @@
 
   let activeNegotiationTask = null;
 
+  const NEG_INTRO_MANUAL = 'Enter deal parameters manually, or browse the Task Feed and click Negotiate on a marketplace task to pre-fill terms.';
+  const NEG_INTRO_MARKETPLACE = 'Terms pre-filled from the marketplace task below — adjust your offer if needed, then evaluate.';
+
+  function setNegWalletActionsVisible(visible) {
+    const useWalletBtn = document.getElementById('negUseMyWalletBtn');
+    const panelUseWallet = document.getElementById('negPanelUseWallet');
+    const display = visible ? '' : 'none';
+    if (useWalletBtn) useWalletBtn.style.display = display;
+    if (panelUseWallet) panelUseWallet.style.display = display;
+  }
+
+  function prepareManualNegotiationUI({ resetThread = false, resetForm = false } = {}) {
+    const intro = document.getElementById('negIntroText');
+    const empty = document.getElementById('negEmptyState');
+    const ctx = document.getElementById('negTaskContext');
+    const negClient = document.getElementById('negClient');
+    const tokenSelect = document.getElementById('negTokenSelect');
+
+    if (intro) intro.textContent = NEG_INTRO_MANUAL;
+    if (empty) empty.style.display = 'block';
+    if (ctx) ctx.style.display = 'none';
+    setNegWalletActionsVisible(true);
+
+    if (resetForm) {
+      if (negClient) {
+        negClient.readOnly = false;
+        negClient.value = '';
+      }
+      const budgetEl = document.getElementById('negBudgetAmount');
+      if (budgetEl) budgetEl.value = '';
+      if (tokenSelect) tokenSelect.value = 'USDT';
+      const daysEl = document.getElementById('negDeadlineDays');
+      if (daysEl) daysEl.value = '4';
+    } else if (negClient) {
+      negClient.readOnly = false;
+    }
+
+    if (resetThread) {
+      const thread = document.getElementById('negThread');
+      if (thread) {
+        thread.innerHTML = '<div class="msg-row"><div class="avatar a">QA</div><div class="bubble">Awaiting SLA proposal parameters. Pick a marketplace task or enter target agent, budget, and deadline.</div></div>';
+      }
+      document.getElementById('negOutputPanel').style.display = 'none';
+      document.getElementById('btnAccept').disabled = true;
+    }
+  }
+
+  function applyNegotiationTaskUI(task, { resetThread = false } = {}) {
+    if (!task) return prepareManualNegotiationUI({ resetThread });
+
+    const targetAgent = String(task.agentId || task.clientAddress || task.providerAddress || '').trim();
+    const negClient = document.getElementById('negClient');
+    if (negClient) {
+      negClient.value = targetAgent;
+      negClient.readOnly = !!targetAgent;
+    }
+
+    const amountRaw = task.tokenAmount != null ? String(task.tokenAmount).trim() : '';
+    const amount = amountRaw
+      ? parseFloat(amountRaw)
+      : (task.budgetWei ? Number(task.budgetWei) / 1e6 : 0);
+    const budgetEl = document.getElementById('negBudgetAmount');
+    if (budgetEl) budgetEl.value = amount > 0 ? amount : '';
+
+    const token = (task.tokenSymbol || 'USDT').toUpperCase();
+    const tokenSelect = document.getElementById('negTokenSelect');
+    if (tokenSelect && [...tokenSelect.options].some((o) => o.value === token)) {
+      tokenSelect.value = token;
+    } else if (tokenSelect) {
+      tokenSelect.value = 'USDT';
+    }
+    const daysEl = document.getElementById('negDeadlineDays');
+    if (daysEl) daysEl.value = '7';
+
+    const intro = document.getElementById('negIntroText');
+    const empty = document.getElementById('negEmptyState');
+    const ctx = document.getElementById('negTaskContext');
+    const titleEl = document.getElementById('negTaskTitle');
+    const jobRef = document.getElementById('negTaskJobRef');
+    const clientRef = document.getElementById('negTaskClientRef');
+    const budgetRef = document.getElementById('negTaskBudgetRef');
+
+    if (intro) intro.textContent = NEG_INTRO_MARKETPLACE;
+    if (empty) empty.style.display = 'none';
+    setNegWalletActionsVisible(false);
+
+    if (ctx && titleEl && task.id) {
+      ctx.style.display = 'block';
+      titleEl.textContent = task.title || `Task ${formatJobRef(task.id)}`;
+      if (jobRef) jobRef.textContent = formatJobRef(task.id);
+      if (clientRef) {
+        clientRef.textContent = /^\d+$/.test(targetAgent)
+          ? `Agent #${targetAgent}`
+          : (targetAgent ? formatJobRef(targetAgent) : '—');
+      }
+      if (budgetRef) budgetRef.textContent = formatTaskPayment(task);
+    } else if (ctx) {
+      ctx.style.display = 'none';
+    }
+
+    if (resetThread) {
+      const thread = document.getElementById('negThread');
+      if (thread) {
+        thread.innerHTML = '';
+        addMessage(
+          'QA',
+          `Opened negotiation for "${task.title || formatJobRef(task.id)}". Terms are pre-filled from the marketplace — adjust your offer if needed, then click Evaluate Proposal Terms.`,
+          'a'
+        );
+      }
+      document.getElementById('negOutputPanel').style.display = 'none';
+      document.getElementById('btnAccept').disabled = true;
+    }
+  }
+
+  function syncNegotiationPage({ resetThread = false, resetForm = false } = {}) {
+    if (activeNegotiationTask) {
+      applyNegotiationTaskUI(activeNegotiationTask, { resetThread });
+    } else {
+      prepareManualNegotiationUI({ resetThread, resetForm });
+    }
+  }
+
   function isValidNegotiationTarget(value) {
     const v = (value || '').trim();
     if (!v) return false;
@@ -1579,62 +1710,8 @@
       }
     }
     activeNegotiationTask = task;
+    applyNegotiationTaskUI(task, { resetThread: true });
     showPage('negotiation', navItemForPage('negotiation'));
-
-    const targetAgent = String(task.agentId || task.clientAddress || task.providerAddress || '').trim();
-    const negClient = document.getElementById('negClient');
-    negClient.value = targetAgent;
-    negClient.readOnly = !!targetAgent;
-
-    const amountRaw = task.tokenAmount != null ? String(task.tokenAmount).trim() : '';
-    const amount = amountRaw
-      ? parseFloat(amountRaw)
-      : (task.budgetWei ? Number(task.budgetWei) / 1e6 : 0);
-    document.getElementById('negBudgetAmount').value = amount > 0 ? amount : '';
-
-    const token = (task.tokenSymbol || 'USDT').toUpperCase();
-    const tokenSelect = document.getElementById('negTokenSelect');
-    if (tokenSelect && [...tokenSelect.options].some((o) => o.value === token)) {
-      tokenSelect.value = token;
-    } else if (tokenSelect) {
-      tokenSelect.value = 'USDT';
-    }
-    document.getElementById('negDeadlineDays').value = 7;
-
-    const ctx = document.getElementById('negTaskContext');
-    const titleEl = document.getElementById('negTaskTitle');
-    const jobRef = document.getElementById('negTaskJobRef');
-    const clientRef = document.getElementById('negTaskClientRef');
-    const budgetRef = document.getElementById('negTaskBudgetRef');
-    const useWalletBtn = document.getElementById('negUseMyWalletBtn');
-    const panelUseWallet = document.getElementById('negPanelUseWallet');
-    if (ctx && titleEl && task.id) {
-      ctx.style.display = 'block';
-      titleEl.textContent = task.title || `Task ${formatJobRef(task.id)}`;
-      if (jobRef) jobRef.textContent = formatJobRef(task.id);
-      if (clientRef) {
-        clientRef.textContent = /^\d+$/.test(targetAgent)
-          ? `Agent #${targetAgent}`
-          : (targetAgent ? formatJobRef(targetAgent) : '—');
-      }
-      if (budgetRef) budgetRef.textContent = formatTaskPayment(task);
-      if (useWalletBtn) useWalletBtn.style.display = 'none';
-      if (panelUseWallet) panelUseWallet.style.display = 'none';
-    } else if (ctx) {
-      ctx.style.display = 'none';
-      if (useWalletBtn) useWalletBtn.style.display = '';
-      if (panelUseWallet) panelUseWallet.style.display = '';
-    }
-
-    const thread = document.getElementById('negThread');
-    thread.innerHTML = '';
-    addMessage(
-      'QA',
-      `Opened negotiation for "${task.title || task.id}". Terms are pre-filled from the marketplace — adjust your offer if needed, then click Evaluate Proposal Terms.`,
-      'a'
-    );
-    document.getElementById('negOutputPanel').style.display = 'none';
-    document.getElementById('btnAccept').disabled = true;
   }
 
   function skipTask(taskId, btn) {
@@ -2311,35 +2388,19 @@
 
   function resetThread() {
     activeNegotiationTask = null;
-    const negClient = document.getElementById('negClient');
-    if (negClient) {
-      negClient.readOnly = false;
-      negClient.value = '';
-    }
-    const ctx = document.getElementById('negTaskContext');
-    if (ctx) ctx.style.display = 'none';
-    const useWalletBtn = document.getElementById('negUseMyWalletBtn');
-    const panelUseWallet = document.getElementById('negPanelUseWallet');
-    if (useWalletBtn) useWalletBtn.style.display = '';
-    if (panelUseWallet) panelUseWallet.style.display = '';
-    document.getElementById('negThread').innerHTML = '<div class="msg-row"><div class="avatar a">QA</div><div class="bubble">Awaiting SLA proposal parameters...</div></div>';
-    document.getElementById('btnAccept').disabled = true;
-    document.getElementById('negOutputPanel').style.display = 'none';
+    prepareManualNegotiationUI({ resetThread: true, resetForm: true });
   }
 
   function useMyWallet() {
     const myWallet = localStorage.getItem('operatorWallet');
     if (myWallet) {
-      const negClient = document.getElementById('negClient');
-      negClient.readOnly = false;
-      negClient.value = myWallet;
       activeNegotiationTask = null;
-      const ctx = document.getElementById('negTaskContext');
-      if (ctx) ctx.style.display = 'none';
-      const useWalletBtn = document.getElementById('negUseMyWalletBtn');
-      const panelUseWallet = document.getElementById('negPanelUseWallet');
-      if (useWalletBtn) useWalletBtn.style.display = '';
-      if (panelUseWallet) panelUseWallet.style.display = '';
+      prepareManualNegotiationUI({ resetThread: false });
+      const negClient = document.getElementById('negClient');
+      if (negClient) {
+        negClient.readOnly = false;
+        negClient.value = myWallet;
+      }
     } else {
       showToast('No active operator wallet found in session. Please log in first.');
     }
