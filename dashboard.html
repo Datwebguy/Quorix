@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QuorixASP — Console</title>
+<title>QuorixASP · Console</title>
 <link rel="icon" href="favicon.ico?v=3" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32x32.png?v=3">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/logo/favicon-16x16.png?v=3">
@@ -498,7 +498,7 @@
       <div class="dev-toggle" id="devModeToggle" onclick="toggleDevMode()">Show developer tools</div>
       <div class="agent-status">
         <div class="row1"><span class="name">QuorixASP</span><span class="pill pill-warning" id="sidebarStatus">Connecting</span></div>
-        <div class="bal" id="sidebarAgentMeta" style="font-family:var(--sans); font-size:11px; color:var(--text-2);">Agent ID: —</div>
+        <div class="bal" id="sidebarAgentMeta" style="font-family:var(--sans); font-size:11px; color:var(--text-2);">Agent ID: ·</div>
       </div>
     </div>
   </div>
@@ -524,10 +524,10 @@
         </div>
 
         <div class="stat-grid">
-          <div class="stat-card"><div class="lbl">Your Tasks</div><div class="val" id="ovTasksCount">—</div><div class="delta up" id="ovTasksDelta">Local orchestrator</div></div>
-          <div class="stat-card"><div class="lbl">Locked Volume</div><div class="val" id="ovEscrowVolume">—</div><div class="delta up" id="ovEscrowDelta">Your jobs only</div></div>
-          <div class="stat-card"><div class="lbl">Rating Avg</div><div class="val" id="ovRating">—</div><div class="delta up" id="ovRatingDelta">Run audit below</div></div>
-          <div class="stat-card"><div class="lbl">Success Rate</div><div class="val" id="ovSuccessRate">—</div><div class="delta up" id="ovSuccessDelta">Your jobs only</div></div>
+          <div class="stat-card"><div class="lbl">Your Tasks</div><div class="val" id="ovTasksCount">·</div><div class="delta up" id="ovTasksDelta">Local orchestrator</div></div>
+          <div class="stat-card"><div class="lbl">Locked Volume</div><div class="val" id="ovEscrowVolume">·</div><div class="delta up" id="ovEscrowDelta">Your jobs only</div></div>
+          <div class="stat-card"><div class="lbl">Rating Avg</div><div class="val" id="ovRating">·</div><div class="delta up" id="ovRatingDelta">Run audit below</div></div>
+          <div class="stat-card"><div class="lbl">Success Rate</div><div class="val" id="ovSuccessRate">·</div><div class="delta up" id="ovSuccessDelta">Your jobs only</div></div>
         </div>
 
         <div class="row2">
@@ -546,15 +546,15 @@
             </div>
           </div>
 
-          <!-- Reputation audit — populated only after runLiveAudit() -->
+          <!-- Reputation audit populated only after runLiveAudit() -->
           <div class="panel">
             <div class="panel-head"><h3>Reputation Audit (A2MCP)</h3></div>
             <div class="rep-score">
-              <div class="rep-ring" id="ovRepRing"><div class="inner"><b id="ovRepScore">—</b><span>RATING</span></div></div>
+              <div class="rep-ring" id="ovRepRing"><div class="inner"><b id="ovRepScore">·</b><span>RATING</span></div></div>
               <div class="rep-detail">
-                <div><span>Total Ratings</span><b id="ovRepCount">—</b></div>
-                <div><span>Total Escrows</span><b id="ovRepEscrows">—</b></div>
-                <div><span>Dispute Rate</span><b id="ovRepDisputes">—</b></div>
+                <div><span>Total Ratings</span><b id="ovRepCount">·</b></div>
+                <div><span>Total Escrows</span><b id="ovRepEscrows">·</b></div>
+                <div><span>Dispute Rate</span><b id="ovRepDisputes">·</b></div>
               </div>
             </div>
             <div style="padding: 0 18px 18px;">
@@ -607,19 +607,19 @@
             </div>
             <div class="neg-panel-body">
               <div class="neg-intro" id="negIntroText">
-                Enter deal parameters manually, or browse the Task Feed and click Negotiate on a marketplace task to pre-fill terms.
+                Enter deal parameters manually, or browse the Task Feed and click Negotiate on a marketplace task to prefill terms.
               </div>
               <div id="negEmptyState" class="neg-empty-state" style="display:block;">
-                <p>No marketplace task selected. Browse open tasks and click <strong>Negotiate</strong> to load job details here — or fill in the fields below for a manual SLA proposal.</p>
+                <p>No marketplace task selected. Browse open tasks and click <strong>Negotiate</strong> to load job details here, or fill in the fields below for a manual SLA proposal.</p>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="showPage('matching', navItemForPage('matching'))">Browse Task Feed</button>
               </div>
               <div id="negTaskContext" class="neg-task-card" style="display:none;">
                 <div class="lbl">Marketplace task</div>
                 <div id="negTaskTitle" class="title"></div>
                 <div class="neg-task-rows">
-                  <div class="neg-task-row"><span class="k">Job</span><span class="v" id="negTaskJobRef">—</span></div>
-                  <div class="neg-task-row"><span class="k">Client</span><span class="v" id="negTaskClientRef">—</span></div>
-                  <div class="neg-task-row"><span class="k">Budget</span><span class="v" id="negTaskBudgetRef">—</span></div>
+                  <div class="neg-task-row"><span class="k">Job</span><span class="v" id="negTaskJobRef">·</span></div>
+                  <div class="neg-task-row"><span class="k">Client</span><span class="v" id="negTaskClientRef">·</span></div>
+                  <div class="neg-task-row"><span class="k">Budget</span><span class="v" id="negTaskBudgetRef">·</span></div>
                 </div>
               </div>
               <div class="form-group">
@@ -684,8 +684,8 @@
       <section class="page" id="mcp">
         <div class="page-head"><div><h2>MCP Tools</h2><div class="sub" id="mcpSub">Services your broker offers</div></div></div>
         <div class="panel">
-          <div class="panel-head"><h3>Available Services</h3><span class="pill pill-accent" id="mcpLiveCount">—</span></div>
-          <p class="mcp-intro">Live HTTP tools other agents can call — reputation checks, deal evaluation, and marketplace matching via OKX.AI CLI integration.</p>
+          <div class="panel-head"><h3>Available Services</h3><span class="pill pill-accent" id="mcpLiveCount">·</span></div>
+          <p class="mcp-intro">Live HTTP tools other agents can call: reputation checks, deal evaluation, and marketplace matching via OKX.AI CLI integration.</p>
           <div style="padding:0 18px 18px;">
             <div class="mcp-tools-list" id="mcpToolsGrid">
               <div style="text-align:center;color:var(--text-2);padding:24px;">Loading services...</div>
@@ -700,18 +700,18 @@
         <div class="panel">
           <div class="panel-head collapsible-head open" id="devEndpointsHead" onclick="toggleDevEndpointsPanel()">
             <h3>Agent Service Endpoints <span class="chevron">▶</span></h3>
-            <span class="pill pill-accent" id="mcpOkxStatus">—</span>
+            <span class="pill pill-accent" id="mcpOkxStatus">·</span>
           </div>
           <div class="collapsible-body open" id="devEndpointsBody">
             <div class="mcp-agent-infra">
               <p>HTTP endpoints for remote AI agents and OKX.AI platform integration. Use these when registering your ASP or wiring external agent clients.</p>
               <div class="mcp-endpoint-grid">
-                <div class="mcp-endpoint-card"><div class="lbl">Tool invoke (HTTP)</div><div class="val" id="mcpEndpointInvoke">—</div></div>
-                <div class="mcp-endpoint-card"><div class="lbl">Agent manifest</div><div class="val" id="mcpEndpointManifest">—</div></div>
-                <div class="mcp-endpoint-card"><div class="lbl">Tools catalog</div><div class="val" id="mcpEndpointTools">—</div></div>
-                <div class="mcp-endpoint-card"><div class="lbl">Health check</div><div class="val" id="mcpEndpointHealth">—</div></div>
+                <div class="mcp-endpoint-card"><div class="lbl">Tool invoke (HTTP)</div><div class="val" id="mcpEndpointInvoke">·</div></div>
+                <div class="mcp-endpoint-card"><div class="lbl">Agent manifest</div><div class="val" id="mcpEndpointManifest">·</div></div>
+                <div class="mcp-endpoint-card"><div class="lbl">Tools catalog</div><div class="val" id="mcpEndpointTools">·</div></div>
+                <div class="mcp-endpoint-card"><div class="lbl">Health check</div><div class="val" id="mcpEndpointHealth">·</div></div>
               </div>
-              <p style="margin-top:14px;font-size:12px;color:var(--text-2);line-height:1.5;" id="mcpOkxHint">—</p>
+              <p style="margin-top:14px;font-size:12px;color:var(--text-2);line-height:1.5;" id="mcpOkxHint">·</p>
             </div>
           </div>
         </div>
@@ -1415,7 +1415,7 @@
     const select = document.getElementById('mcpInvokeTool');
     if (!select || !mcpToolsCatalog.length) return;
     const current = activeMcpTool || select.value;
-    select.innerHTML = '<option value="">— Choose a tool —</option>';
+    select.innerHTML = '<option value="">Choose a tool</option>';
     mcpToolsCatalog.forEach((tool) => {
       const opt = document.createElement('option');
       opt.value = tool.name;
@@ -1430,7 +1430,7 @@
 
   function formatJobRef(id) {
     const s = String(id || '').trim();
-    if (!s) return '—';
+    if (!s) return '·';
     if (/^0x[a-fA-F0-9]{40}$/i.test(s)) return s.slice(0, 8) + '…' + s.slice(-6);
     if (s.length > 14) return s.slice(0, 10) + '…' + s.slice(-4);
     return s;
@@ -1448,12 +1448,12 @@
     if (task.budgetWei) {
       return `${(Number(task.budgetWei) / 1e6).toFixed(2)} USDT`;
     }
-    return '—';
+    return '·';
   }
 
   function formatPostedAgo(task) {
     const ts = Number(task.createTime || task.deadlineTimestamp || 0);
-    if (!ts) return '—';
+    if (!ts) return '·';
     const diffSec = Math.max(0, Math.floor(Date.now() / 1000) - ts);
     if (diffSec < 3600) return `${Math.max(1, Math.round(diffSec / 60))}m ago`;
     if (diffSec < 86400) return `${Math.max(1, Math.round(diffSec / 3600))}h ago`;
@@ -1499,7 +1499,7 @@
           const brokerNote = data.meta.brokerAgentId ? ` · via broker #${data.meta.brokerAgentId}` : '';
           const authNote = data.meta.authError ? ' · broker feed unavailable' : '';
           sub.textContent =
-            `${total} live OKX.AI marketplace task${total === 1 ? '' : 's'} via task-search${brokerNote}${scanNote}${authNote}`;
+            `${total} live OKX.AI marketplace task${total === 1 ? '' : 's'} via task search${brokerNote}${scanNote}${authNote}`;
         } else {
           const agentNote = data.meta.requiresVisitorAgent ? ' · agent identity required' : '';
           sub.textContent =
@@ -1576,8 +1576,8 @@
 
   let activeNegotiationTask = null;
 
-  const NEG_INTRO_MANUAL = 'Enter deal parameters manually, or browse the Task Feed and click Negotiate on a marketplace task to pre-fill terms.';
-  const NEG_INTRO_MARKETPLACE = 'Terms pre-filled from the marketplace task below — adjust your offer if needed, then evaluate.';
+  const NEG_INTRO_MANUAL = 'Enter deal parameters manually, or browse the Task Feed and click Negotiate on a marketplace task to prefill terms.';
+  const NEG_INTRO_MARKETPLACE = 'Terms prefilled from the marketplace task below. Adjust your offer if needed, then evaluate.';
 
   function setNegWalletActionsVisible(visible) {
     const useWalletBtn = document.getElementById('negUseMyWalletBtn');
@@ -1669,7 +1669,7 @@
       if (clientRef) {
         clientRef.textContent = /^\d+$/.test(targetAgent)
           ? `Agent #${targetAgent}`
-          : (targetAgent ? formatJobRef(targetAgent) : '—');
+          : (targetAgent ? formatJobRef(targetAgent) : '·');
       }
       if (budgetRef) budgetRef.textContent = formatTaskPayment(task);
     } else if (ctx) {
@@ -1682,7 +1682,7 @@
         thread.innerHTML = '';
         addMessage(
           'QA',
-          `Opened negotiation for "${task.title || formatJobRef(task.id)}". Terms are pre-filled from the marketplace — adjust your offer if needed, then click Evaluate Proposal Terms.`,
+          `Opened negotiation for "${task.title || formatJobRef(task.id)}". Terms are prefilled from the marketplace. Adjust your offer if needed, then click Evaluate Proposal Terms.`,
           'a'
         );
       }
@@ -2052,7 +2052,7 @@
         const mpTotal = data.meta.marketplaceTotal ?? 0;
         const mpNote = mpTotal > 0
           ? `${mpTotal} in OKX marketplace pool`
-          : (data.meta.authError ? 'Broker feed unavailable' : 'OKX marketplace via task-search');
+          : (data.meta.authError ? 'Broker feed unavailable' : 'OKX marketplace via task search');
         document.getElementById('ovTasksDelta').textContent =
           `${data.meta.orchestratorCount} local job${data.meta.orchestratorCount === 1 ? '' : 's'} · ${mpNote}`;
       }
@@ -2104,7 +2104,7 @@
       document.getElementById('ovEscrowVolume').textContent =
         totalVolumeWei > 0n
           ? (Number(totalVolumeWei) / 1e6).toFixed(2) + ' USDT'
-          : '—';
+          : '·';
 
       const totalReviews = completedCount + disputedCount;
       if (totalReviews > 0) {
@@ -2112,7 +2112,7 @@
         document.getElementById('ovSuccessRate').textContent = successRate + '%';
         document.getElementById('ovSuccessDelta').textContent = `${completedCount} settled · ${disputedCount} disputed`;
       } else {
-        document.getElementById('ovSuccessRate').textContent = '—';
+        document.getElementById('ovSuccessRate').textContent = '·';
         document.getElementById('ovSuccessDelta').textContent = 'No completed jobs yet';
       }
     } catch (err) {
@@ -2188,11 +2188,11 @@
       const data = await response.json();
 
       if (data.scanFailed) {
-        document.getElementById('ovRepScore').textContent = '—';
-        document.getElementById('ovRating').textContent = '—';
-        document.getElementById('ovRepCount').textContent = '—';
-        document.getElementById('ovRepEscrows').textContent = '—';
-        document.getElementById('ovRepDisputes').textContent = '—';
+        document.getElementById('ovRepScore').textContent = '·';
+        document.getElementById('ovRating').textContent = '·';
+        document.getElementById('ovRepCount').textContent = '·';
+        document.getElementById('ovRepEscrows').textContent = '·';
+        document.getElementById('ovRepDisputes').textContent = '·';
         logDaemon(`Reputation scan failed. Try again in a moment.`, true);
         return;
       }

@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32x32.png?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/landing.css?v=6">
+<link rel="stylesheet" href="assets/landing.css?v=7">
 <script>try{var t=localStorage.getItem('quorix-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
 </head>
 <body>
@@ -64,7 +64,7 @@
     <div class="faq-list">
       <div class="faq-item">
         <button type="button" class="faq-q" onclick="toggleFaq(this)">What is QuorixASP? <span class="chev">▼</span></button>
-        <div class="faq-a">QuorixASP is a registered Autonomous Service Provider (ASP) on OKX.AI. It runs a live broker daemon that discovers marketplace tasks, evaluates SLA terms, audits agent reputation via A2MCP, and tracks settlement on X Layer — all through a web console backed by the OnchainOS CLI.</div>
+        <div class="faq-a">QuorixASP is a registered Autonomous Service Provider (ASP) on OKX.AI. It runs a live broker daemon that discovers marketplace tasks, evaluates SLA terms, audits agent reputation via A2MCP, and tracks settlement on X Layer, all through a web console backed by the OnchainOS CLI.</div>
       </div>
       <div class="faq-item">
         <button type="button" class="faq-q" onclick="toggleFaq(this)">How do I sign in? <span class="chev">▼</span></button>
@@ -76,7 +76,7 @@
       </div>
       <div class="faq-item">
         <button type="button" class="faq-q" onclick="toggleFaq(this)">What's the difference between manual and marketplace negotiation? <span class="chev">▼</span></button>
-        <div class="faq-a">Clicking <strong>Negotiate</strong> on a task in the Task Feed pre-fills deal parameters and shows the marketplace task card. Opening the Deal tab directly lets you enter parameters manually — use <strong>Browse Task Feed</strong> to pick a live opportunity first.</div>
+        <div class="faq-a">Clicking <strong>Negotiate</strong> on a task in the Task Feed prefills deal parameters and shows the marketplace task card. Opening the Deal tab directly lets you enter parameters manually. Use <strong>Browse Task Feed</strong> to pick a live opportunity first.</div>
       </div>
       <div class="faq-item">
         <button type="button" class="faq-q" onclick="toggleFaq(this)">Where does settlement happen? <span class="chev">▼</span></button>
@@ -84,11 +84,11 @@
       </div>
       <div class="faq-item">
         <button type="button" class="faq-q" onclick="toggleFaq(this)">What is A2MCP? <span class="chev">▼</span></button>
-        <div class="faq-a">A2MCP (Agent-to-Agent MCP) exposes HTTP JSON-RPC tools that other agents can call to query reputation scores, deal history, and broker capabilities. QuorixASP registers six live MCP tools accessible from the console's MCP Tools panel.</div>
+        <div class="faq-a">A2MCP (Agent to Agent MCP) exposes HTTP JSON RPC tools that other agents can call to query reputation scores, deal history, and broker capabilities. QuorixASP registers six live MCP tools accessible from the console's MCP Tools panel.</div>
       </div>
       <div class="faq-item">
         <button type="button" class="faq-q" onclick="toggleFaq(this)">Is the marketplace data real? <span class="chev">▼</span></button>
-        <div class="faq-a">Yes. The task feed pulls live open tasks from OKX.AI via <code>onchainos agent task-search</code> using the broker's authenticated CLI session (Agent #4187). Amounts, matcher scores, and job IDs reflect real marketplace entries.</div>
+        <div class="faq-a">Yes. The task feed pulls live open tasks from OKX.AI via <code>onchainos agent task search</code> using the broker's authenticated CLI session (Agent #4187). Amounts, matcher scores, and job IDs reflect real marketplace entries.</div>
       </div>
       <div class="faq-item">
         <button type="button" class="faq-q" onclick="toggleFaq(this)">Can I self-host QuorixASP? <span class="chev">▼</span></button>
@@ -118,7 +118,7 @@
         <img class="logo-mark" src="assets/logo/logo-header.png?v=4" width="32" height="32" alt="">
         QuorixASP
       </a>
-      <p>Autonomous broker ASP for OKX.AI — discover tasks, negotiate SLAs, audit reputation, and monitor settlement on X Layer.</p>
+      <p>Autonomous broker ASP for OKX.AI. Discover tasks, negotiate SLAs, audit reputation, and monitor settlement on X Layer.</p>
       <div class="footer-social">
         <a href="https://github.com/Datwebguy/Quorix" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
