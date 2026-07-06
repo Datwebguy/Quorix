@@ -1,6 +1,7 @@
 import { SemanticMatcher } from './discovery/matching';
 import { MarketplaceScanner } from './discovery/marketplace';
 import type { OkxCliSession } from './onchainos/taskMarketplace';
+import { walletIsLoggedIn } from './onchainos/taskMarketplace';
 import { ReputationScorer } from './reputation/scorer';
 import { NegotiationEngine } from './negotiation/engine';
 import { XLayerClient } from './escrow/contract';
@@ -62,6 +63,18 @@ const otpAttemptTracker = new Map<string, number>(); // normalizedEmail -> last 
 function getShortPath(fullPath: string): string {
   if (!fullPath) return '';
   return path.basename(fullPath);
+}
+
+/** Resolve project root for static HTML assets in both dev (src/) and prod (dist/src/). */
+function resolveStaticRoot(): string {
+  const candidates = [
+    path.join(__dirname, '..'),
+    path.join(__dirname, '../..'),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, 'login.html'))) return dir;
+  }
+  return path.join(__dirname, '../..');
 }
 
 function isValidWalletAddress(wallet: string): boolean {
@@ -246,17 +259,27 @@ async function main() {
   );
   const marketplaceScanner = new MarketplaceScanner(matcher);
 
+  async function resolveBrokerCliSession(): Promise<OkxCliSession | null> {
+    const brokerHome = process.env.ONCHAINOS_HOME?.trim();
+    if (!brokerHome) return null;
+    const agentId = process.env.AGENT_ID?.trim() || '4187';
+    if (!(await walletIsLoggedIn(brokerHome))) {
+      logErrorOnce('broker-wallet', '[TaskFeed] Broker wallet session is not logged in');
+      return null;
+    }
+    return { homeDir: brokerHome, agentId };
+  }
+
+  async function resolveVisitorCliSession(wallet?: string): Promise<OkxCliSession | null> {
+    if (!wallet) return null;
+    const record = getSessionForWallet(wallet);
+    if (!record) return null;
+    return marketplaceScanner.resolveSession(record.homeDir);
+  }
+
   async function resolveMarketplaceCliSession(wallet?: string): Promise<OkxCliSession | null> {
-    if (wallet) {
-      const record = getSessionForWallet(wallet);
-      if (!record) return null;
-      return marketplaceScanner.resolveSession(record.homeDir);
-    }
-    const brokerHome = process.env.ONCHAINOS_HOME;
-    if (brokerHome) {
-      return marketplaceScanner.resolveSession(brokerHome);
-    }
-    return null;
+    if (wallet) return resolveVisitorCliSession(wallet);
+    return resolveBrokerCliSession();
   }
 
   // 2. Start the MCP server (A2MCP Pay-per-call stdio handler)
@@ -277,12 +300,28 @@ async function main() {
   app.use(cors());
   app.use(express.json());
   
-  // Serve dashboard HTML, CSS, and client-side files
-  app.use(express.static(path.join(__dirname, '../../')));
+  const staticRoot = resolveStaticRoot();
+  const cleanPageRoutes: Array<{ cleanPath: string; file: string }> = [
+    { cleanPath: '/login', file: 'login.html' },
+    { cleanPath: '/dashboard', file: 'dashboard.html' },
+    { cleanPath: '/admin', file: 'admin.html' },
+  ];
 
-  app.get('/', (req: any, res: any) => {
-    res.send(`QuorixASP is running on port ${ENV.PORT}`);
+  app.get('/', (_req: any, res: any) => {
+    res.sendFile(path.join(staticRoot, 'index.html'));
   });
+
+  for (const { cleanPath, file } of cleanPageRoutes) {
+    app.get(cleanPath, (_req: any, res: any) => {
+      res.sendFile(path.join(staticRoot, file));
+    });
+    app.get(`/${file}`, (_req: any, res: any) => {
+      res.redirect(301, cleanPath);
+    });
+  }
+
+  // Serve dashboard HTML, CSS, and client-side assets
+  app.use(express.static(staticRoot));
 
   app.get('/api/status', (req: any, res: any) => {
     res.json({
@@ -397,29 +436,49 @@ async function main() {
 
   async function buildTaskFeed(options: { wallet?: string; view?: TaskFeedView } = {}) {
     const view: TaskFeedView = options.view === 'my' ? 'my' : 'marketplace';
-    const wallet = options.wallet;
+    const wallet = view === 'my' ? options.wallet : undefined;
     const activeJobs = orchestrator.getActiveJobs();
     let cliSession: OkxCliSession | null = null;
     let discovered: Awaited<ReturnType<MarketplaceScanner['scanRecentTasks']>> = [];
     let scanError: string | null = null;
+    let requiresVisitorAgent = false;
+    let visitorAgentReady = false;
 
     try {
-      cliSession = await resolveMarketplaceCliSession(wallet);
+      if (view === 'marketplace') {
+        marketplaceScanner.clearLastAuthError();
+        cliSession = await resolveBrokerCliSession();
+        if (!cliSession) {
+          scanError = 'Broker wallet session unavailable — QuorixASP cannot query the OKX.AI marketplace.';
+        }
+      } else if (wallet) {
+        cliSession = await resolveVisitorCliSession(wallet);
+        visitorAgentReady = !!cliSession?.agentId;
+        if (!cliSession) {
+          requiresVisitorAgent = true;
+          scanError =
+            'No OKX.AI agent identity found for your wallet. Register a User or ASP agent on OKX.AI to view your personal tasks.';
+        }
+      } else {
+        requiresVisitorAgent = true;
+      }
     } catch (sessionErr: any) {
       scanError = sessionErr?.message || String(sessionErr);
       logErrorOnce('taskfeed-session', `[TaskFeed] CLI session resolution failed: ${scanError}`);
     }
 
     try {
-      discovered = await marketplaceScanner.scanRecentTasks(
-        {
-          session: cliSession,
-          limit: 40,
-          minScore: 0,
-          mode: view === 'marketplace' ? 'search' : 'search',
-        },
-        false
-      );
+      if (view === 'marketplace' || cliSession) {
+        discovered = await marketplaceScanner.scanRecentTasks(
+          {
+            session: cliSession,
+            limit: 40,
+            minScore: 0,
+            mode: 'search',
+          },
+          false
+        );
+      }
     } catch (scanErr: any) {
       scanError = scanErr?.message || String(scanErr);
       logErrorOnce('taskfeed-scan', `[TaskFeed] OKX CLI marketplace scan deferred: ${scanError}`);
@@ -453,7 +512,17 @@ async function main() {
       }
     }
 
-    const authError = marketplaceScanner.getLastAuthError() || scanError;
+    let authError: string | undefined;
+    if (view === 'marketplace') {
+      authError =
+        tasks.length === 0
+          ? marketplaceScanner.getLastAuthError() || scanError || undefined
+          : undefined;
+    } else {
+      authError = requiresVisitorAgent
+        ? scanError || 'Register an OKX.AI agent identity (User or ASP) to view your personal tasks.'
+        : marketplaceScanner.getLastAuthError() || scanError || undefined;
+    }
 
     return {
       tasks,
@@ -469,18 +538,25 @@ async function main() {
         marketplaceScanInProgress: marketplaceScanner.isScanInProgress(),
         onChainScanInProgress: marketplaceScanner.isScanInProgress(),
         feedSource: 'okx-cli-task-search',
+        brokerPowered: view === 'marketplace',
         cliSessionReady: !!cliSession,
-        authError: authError || undefined,
-        agentId: cliSession?.agentId,
+        authError,
+        requiresVisitorAgent: view === 'my' ? requiresVisitorAgent : undefined,
+        visitorAgentReady: view === 'my' ? visitorAgentReady : undefined,
+        agentId: view === 'marketplace' ? cliSession?.agentId : cliSession?.agentId,
+        brokerAgentId: view === 'marketplace' ? cliSession?.agentId : process.env.AGENT_ID || '4187',
       },
     };
   }
 
   app.get('/api/tasks', async (req: any, res: any) => {
     try {
-      const wallet = typeof req.query.wallet === 'string' ? req.query.wallet.trim() : undefined;
       const viewParam = typeof req.query.view === 'string' ? req.query.view.trim().toLowerCase() : 'marketplace';
       const view: TaskFeedView = viewParam === 'my' ? 'my' : 'marketplace';
+      const wallet =
+        view === 'my' && typeof req.query.wallet === 'string'
+          ? req.query.wallet.trim()
+          : undefined;
       if (wallet && !isValidWalletAddress(wallet)) {
         return res.status(400).json({ error: 'Invalid wallet address format' });
       }
@@ -1208,6 +1284,20 @@ async function main() {
     checkStatusWithRetry(session, wallet, res, false);
   });
 
+  // 4b. Visitor agent identity — used by dashboard before personal actions (My Tasks, Negotiate)
+  app.get('/api/auth/agent-identity', async (req: any, res: any) => {
+    const wallet = typeof req.query.wallet === 'string' ? req.query.wallet.trim() : '';
+    if (!wallet || !isValidWalletAddress(wallet)) {
+      return res.status(400).json({ error: 'Valid wallet query parameter required' });
+    }
+    const session = await resolveVisitorCliSession(wallet);
+    res.json({
+      hasAgentIdentity: !!session?.agentId,
+      agentId: session?.agentId ?? null,
+      loggedIn: !!getSessionForWallet(wallet),
+    });
+  });
+
   // 4. Me Command: Retrieves active logged-in wallet details
   app.get('/api/auth/me', (req: any, res: any) => {
     const wallet = req.query.wallet;
@@ -1289,7 +1379,7 @@ async function main() {
 
   app.listen(ENV.PORT, () => {
     console.log(`[Daemon] QuorixASP ready at http://localhost:${ENV.PORT}`);
-    console.log(`[Daemon] Dashboard: http://localhost:${ENV.PORT}/dashboard.html`);
+    console.log(`[Daemon] Dashboard: http://localhost:${ENV.PORT}/dashboard`);
   });
 
   // Start polling sweeps...

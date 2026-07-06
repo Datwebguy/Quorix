@@ -29,7 +29,7 @@
 
   #bgCanvas{position:fixed; inset:0; width:100vw; height:100vh; z-index:0; pointer-events:none;}
   .dash{position:relative; z-index:1; display:grid; grid-template-columns:240px 1fr; min-height:100vh;}
-  .sidebar{background:rgba(19,19,19,0.88); backdrop-filter:blur(6px); border-right:1px solid var(--border); padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh;}
+  .sidebar{background:rgba(19,19,19,0.88); backdrop-filter:blur(6px); border-right:1px solid var(--border); padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; max-height:100vh; min-height:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
   .main{background:transparent; min-width:0;}
   .topbar{background:rgba(11,11,11,0.85); backdrop-filter:blur(10px); position:sticky; top:0; z-index:10;}
 
@@ -60,7 +60,7 @@
   .nav-item.active{background:var(--accent-dim); color:var(--accent); font-weight:600;}
   .nav-item.active .ic{opacity:1;}
   .nav-item:hover:not(.active){background:var(--bg-2); color:var(--text-0);}
-  .sidebar-foot{margin-top:auto; padding-top:14px; border-top:1px solid var(--border);}
+  .sidebar-foot{margin-top:auto; padding-top:14px; border-top:1px solid var(--border); flex-shrink:0;}
   .agent-status{background:var(--bg-2); border:1px solid var(--border); border-radius:10px; padding:11px;}
   .agent-status .row1{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
   .agent-status .name{font-size:11.5px; font-weight:600;}
@@ -253,7 +253,7 @@
 <div class="dash">
 
   <div class="sidebar">
-    <a href="index.html" class="logo logo-link" aria-label="QuorixASP home"><img class="logo-mark" src="assets/logo/logo-header.png?v=3" width="28" height="28" alt="" aria-hidden="true">QuorixASP</a>
+    <a href="/" class="logo logo-link" aria-label="QuorixASP home"><img class="logo-mark" src="assets/logo/logo-header.png?v=3" width="28" height="28" alt="" aria-hidden="true">QuorixASP</a>
 
     <div class="nav-group">
       <div class="nav-label">Console</div>
@@ -275,12 +275,14 @@
       <div class="nav-item" onclick="showPage('debug', this)"><span class="ic">⌁</span> Debug Logs</div>
     </div>
 
+    <div class="sidebar-foot">
       <a class="back-link" href="#" onclick="logoutOperator()">← Sign Out</a>
       <div class="dev-toggle" id="devModeToggle" onclick="toggleDevMode()">Show developer tools</div>
       <div class="agent-status">
         <div class="row1"><span class="name">QuorixASP</span><span class="pill pill-warning" id="sidebarStatus">Connecting</span></div>
         <div class="bal" id="sidebarAgentMeta" style="font-family:var(--sans); font-size:11px; color:var(--text-2);">Agent ID: —</div>
       </div>
+    </div>
   </div>
 
   <div class="main">
@@ -545,7 +547,7 @@
   const operatorWallet = localStorage.getItem('operatorWallet');
   const loginType = localStorage.getItem('loginType');
   if (!operatorWallet) {
-    window.location.href = 'login.html';
+    window.location.href = '/login';
   }
 
   const LOCAL_DAEMON_URL = window.location.protocol === 'file:'
@@ -1204,12 +1206,14 @@
         const lookback = data.meta.lookbackBlocks ? ` · ${data.meta.lookbackBlocks} block lookback` : '';
         if (taskFeedView === 'marketplace') {
           const total = data.meta.marketplaceTotal ?? data.meta.globalOnChainCount ?? data.meta.onChainDiscovered ?? 0;
-          const authNote = data.meta.authError ? ' · login + agent identity required' : '';
+          const brokerNote = data.meta.brokerAgentId ? ` · via broker #${data.meta.brokerAgentId}` : '';
+          const authNote = data.meta.authError ? ' · broker feed unavailable' : '';
           sub.textContent =
-            `${total} live OKX.AI marketplace task${total === 1 ? '' : 's'} via task-search${scanNote}${authNote}`;
+            `${total} live OKX.AI marketplace task${total === 1 ? '' : 's'} via task-search${brokerNote}${scanNote}${authNote}`;
         } else {
+          const agentNote = data.meta.requiresVisitorAgent ? ' · agent identity required' : '';
           sub.textContent =
-            `${data.meta.mergedCount} task${data.meta.mergedCount === 1 ? '' : 's'} you're involved in${scanNote}`;
+            `${data.meta.mergedCount} task${data.meta.mergedCount === 1 ? '' : 's'} you're involved in${agentNote}${scanNote}`;
         }
       }
 
@@ -1224,15 +1228,18 @@
           const scanning = data.meta && (data.meta.marketplaceScanInProgress || data.meta.onChainScanInProgress || !data.meta.marketplaceCacheFresh);
           const globalZero = (data.meta?.marketplaceTotal ?? data.meta?.globalOnChainCount ?? 0) === 0;
           const authHint = data.meta?.authError
-            ? `<br><small>${data.meta.authError}</small><br><small>Log in on the dashboard and register an agent identity (User or ASP) to enable the live feed.</small>`
-            : (!data.meta?.cliSessionReady ? '<br><small>Log in and register an agent identity to load okx.ai/tasks.</small>' : '');
+            ? `<br><small>${data.meta.authError}</small><br><small>QuorixASP broker session could not reach the OKX.AI marketplace API. Try Refresh in a moment.</small>`
+            : '';
           container.innerHTML = `<div style="text-align:center;color:var(--text-2);padding:40px;line-height:1.6;">${
             globalZero
               ? `No matching tasks found yet.${scanning ? ' QuorixASP is fetching from the OKX.AI marketplace API.' : ''}${authHint}`
               : 'No tasks to display.'
           }</div>`;
         } else {
-          container.innerHTML = `<div style="text-align:center;color:var(--text-2);padding:40px;line-height:1.6;">You have no active tasks yet. File a deal from Negotiation to get started.</div>`;
+          const agentHint = data.meta?.requiresVisitorAgent
+            ? `<br><small>${data.meta.authError || 'Register an OKX.AI agent identity (User or ASP) to view tasks you are personally involved in.'}</small>`
+            : '';
+          container.innerHTML = `<div style="text-align:center;color:var(--text-2);padding:40px;line-height:1.6;">You have no active tasks yet.${agentHint}<br><small>File a deal from Negotiation once your agent identity is registered.</small></div>`;
         }
         return;
       }
@@ -1241,6 +1248,8 @@
         const paymentLabel = formatTaskPayment(task);
         const postedAgo = formatPostedAgo(task);
         const statusLabel = formatMarketplaceStatus(task);
+        const jobRef = task.id ? `Job ${String(task.id).slice(0, 10)}…` : '';
+        const clientRef = task.agentId ? `client #${task.agentId}` : '';
         const score = Number(task.score) || 0;
         const sourceLabel = task.source === 'okx-cli' || task.source === 'okx-cli-recommend'
           ? 'OKX marketplace'
@@ -1255,7 +1264,7 @@
           <div class="match-score">${score}%</div>
           <div class="match-info">
             <div class="t">${task.title}</div>
-            <div class="d">${paymentLabel} · posted ${postedAgo} · ${sourceLabel} · ${statusLabel}</div>
+            <div class="d">${paymentLabel} · ${jobRef}${clientRef ? ` · ${clientRef}` : ''} · posted ${postedAgo} · ${sourceLabel} · ${statusLabel}</div>
           </div>
           <div class="match-actions">
             <button class="btn btn-primary btn-sm" data-negotiate="1">Negotiate</button>
@@ -1269,7 +1278,7 @@
     } catch (err) {
       const msg = err && err.message ? String(err.message) : 'Unknown error';
       const hint = /fetch|Failed to fetch|NetworkError/i.test(msg)
-        ? 'Make sure QuorixASP is running (<code>npm start</code>) and open <a href="http://localhost:3001/dashboard.html" style="color:var(--accent)">http://localhost:3001/dashboard.html</a>, then refresh.'
+        ? 'Make sure QuorixASP is running (<code>npm start</code>) and open <a href="http://localhost:3001/dashboard" style="color:var(--accent)">http://localhost:3001/dashboard</a>, then refresh.'
         : msg;
       container.innerHTML = `<div style="text-align:center;color:var(--danger);padding:20px;line-height:1.6;">Could not load tasks.<br><small>${hint}</small></div>`;
     }
@@ -1285,12 +1294,25 @@
     return false;
   }
 
-  function negotiateTaskPreset(task) {
+  async function negotiateTaskPreset(task) {
     if (!task) return;
+    if (connectedUserWallet) {
+      try {
+        const identRes = await fetch(`${LOCAL_DAEMON_URL}/api/auth/agent-identity?wallet=${encodeURIComponent(connectedUserWallet)}`);
+        const ident = await identRes.json().catch(() => ({}));
+        if (!ident.hasAgentIdentity) {
+          showToast('Register an OKX.AI agent identity (User or ASP) to negotiate or accept deals as yourself. Marketplace browsing does not require this.');
+          return;
+        }
+      } catch (e) {
+        showToast('Could not verify your agent identity. Try again in a moment.');
+        return;
+      }
+    }
     activeNegotiationTask = task;
     showPage('negotiation', document.querySelectorAll('.nav-item')[2]);
 
-    const targetAgent = String(task.agentId || task.clientAddress || '').trim();
+    const targetAgent = String(task.agentId || task.clientAddress || task.providerAddress || '').trim();
     const negClient = document.getElementById('negClient');
     negClient.value = targetAgent;
     negClient.readOnly = !!targetAgent;
@@ -1621,7 +1643,7 @@
     localStorage.removeItem('operatorWallet');
     localStorage.removeItem('loginType');
     localStorage.removeItem('adminToken');
-    window.location.href = 'login.html';
+    window.location.href = '/login';
   }
 
   let wasConnected = false;
@@ -1650,8 +1672,8 @@
   async function syncDaemonTasks() {
     const tableBody = document.getElementById('liveTasksTableBody');
     try {
-      const walletParam = connectedUserWallet ? `?wallet=${encodeURIComponent(connectedUserWallet)}` : '';
-      const res = await fetch(`${LOCAL_DAEMON_URL}/api/tasks${walletParam}`);
+      const params = new URLSearchParams({ view: 'marketplace' });
+      const res = await fetch(`${LOCAL_DAEMON_URL}/api/tasks?${params.toString()}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
 
@@ -1660,7 +1682,7 @@
         const mpTotal = data.meta.marketplaceTotal ?? 0;
         const mpNote = mpTotal > 0
           ? `${mpTotal} in OKX marketplace pool`
-          : (data.meta.authError ? 'Marketplace auth pending' : 'OKX marketplace via task-search');
+          : (data.meta.authError ? 'Broker feed unavailable' : 'OKX marketplace via task-search');
         document.getElementById('ovTasksDelta').textContent =
           `${data.meta.orchestratorCount} local job${data.meta.orchestratorCount === 1 ? '' : 's'} · ${mpNote}`;
       }
@@ -1675,11 +1697,11 @@
         tableBody.innerHTML = '<tr class="tr-hover"><td colspan="4" style="text-align:center;color:var(--text-2);padding:20px;">No active tasks yet. Use Deal Negotiation to file your first job.</td></tr>';
       } else {
         data.tasks.forEach(task => {
-          const budget = BigInt(task.budgetWei);
-          const formattedBudget = (Number(budget) / 1e18).toFixed(2) + ' OKB';
+          const formattedBudget = formatTaskPayment(task);
+          const budgetAtomic = BigInt(task.paymentUsdc || task.budgetWei || '0');
           
           if (task.status === 'ESCROW_LOCKED' || task.status === 'EXECUTING') {
-            totalVolumeWei += budget;
+            totalVolumeWei += budgetAtomic;
           }
           if (task.status === 'COMPLETED') {
             completedCount++;
@@ -1711,7 +1733,7 @@
 
       document.getElementById('ovEscrowVolume').textContent =
         totalVolumeWei > 0n
-          ? (Number(totalVolumeWei) / 1e18).toFixed(2) + ' OKB'
+          ? (Number(totalVolumeWei) / 1e6).toFixed(2) + ' USDT'
           : '—';
 
       const totalReviews = completedCount + disputedCount;

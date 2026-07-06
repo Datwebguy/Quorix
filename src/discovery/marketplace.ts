@@ -182,6 +182,10 @@ export class MarketplaceScanner {
     return this.lastAuthError;
   }
 
+  clearLastAuthError(): void {
+    this.lastAuthError = null;
+  }
+
   private filterTasks(tasks: DiscoveredMarketTask[], limit: number, minScore: number) {
     return tasks.filter((t) => t.score >= minScore).slice(0, limit);
   }

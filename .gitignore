@@ -47,3 +47,4 @@ __pycache__/
 # --- Ephemeral tunnels / local overrides ---
 .cloudflared/
 *.trycloudflare.url
+.aider*

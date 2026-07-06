@@ -176,7 +176,7 @@
         localStorage.setItem('operatorWallet', walletAddress);
         localStorage.setItem('loginType', 'Operator');
         localStorage.setItem('operatorSignature', signature);
-        window.location.href = 'dashboard.html';
+        window.location.href = '/dashboard';
       } catch (err) {
         showToast('Authentication failed: ' + err.message);
       }
@@ -251,7 +251,7 @@
         localStorage.setItem('operatorEmail', data.email || targetEmailAddress);
         btn.textContent = 'Already Signed In';
         showToast('You are already authenticated. Redirecting to dashboard...', false);
-        setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
+        setTimeout(() => { window.location.href = '/dashboard'; }, 800);
         return;
       }
 
@@ -313,7 +313,7 @@
       localStorage.setItem('loginType', 'Agentic');
       localStorage.setItem('operatorEmail', targetEmailAddress);
       sessionStorage.removeItem('quorixLoginEmail');
-      window.location.href = 'dashboard.html';
+      window.location.href = '/dashboard';
     } catch (err) {
       btn.disabled = false;
       btn.textContent = 'Authenticate & Enter';

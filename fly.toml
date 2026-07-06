@@ -1,0 +1,59 @@
+# Fly.io config for QuorixASP — persistent machine, no scale-to-zero.
+# Review and adjust `app` name + `primary_region` before first deploy.
+
+app = 'quorixasp'
+primary_region = 'iad'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '8080'
+  # Broker identity (public on-chain registry values)
+  AGENT_ID = '4187'
+  ONCHAINOS_CLI_SESSION = '5b30079cdcea9220'
+  A2A_SERVICE_FEE_USDT = '0.5'
+  # X Layer reference contracts (mainnet — same defaults as .env.example)
+  X_LAYER_RPC_URL = 'https://rpc.xlayer.tech'
+  ESCROW_CONTRACT_ADDRESS = '0x599e23D6073426eBe357d03056258eEAa217e01D'
+  RATING_CONTRACT_ADDRESS = '0x85Be67F1A3c1f470A6c94b3C77fD326d3c0f1188'
+  USDC_TOKEN_ADDRESS = '0x74b7F16337b8972027F6196A17a631aC6dE26d22'
+  # Discovery / polling
+  MARKETPLACE_LOOKBACK_BLOCKS = '1800'
+  POLL_INTERVAL_MS = '120000'
+  MAX_POLL_ATTEMPTS = '20'
+  # Broker SLA defaults
+  BROKER_FEE_BPS = '100'
+  MIN_REPUTATION_SCORE = '3.0'
+  MAX_DISPUTE_RATE = '0.20'
+  # Set after first deploy once you know the Fly HTTPS URL:
+  # PUBLIC_BASE_URL = 'https://quorix-asp.fly.dev'
+  # Optional dashboard display (from onchainos agent get):
+  # COMMUNICATION_ADDRESS = '0x5818803A54Ce48ea268C978Fb40De8a34690F854'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = '45s'
+    interval = '30s'
+    method = 'GET'
+    path = '/api/status'
+    timeout = '10s'
+
+# Persistent state: ONCHAINOS session, Codex auth, okx-a2a XMTP/sqlite stores
+[[mounts]]
+  source = 'quorix_data'
+  destination = '/data'
+  initial_size = '1gb'
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
