@@ -29,7 +29,11 @@
 
   #bgCanvas{position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none;}
   .dash{position:relative; z-index:1; display:grid; grid-template-columns:240px 1fr; min-height:100vh;}
-  .sidebar{background:rgba(19,19,19,0.88); backdrop-filter:blur(6px); border-right:1px solid var(--border); padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; max-height:100vh; min-height:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
+  .sidebar{background:rgba(19,19,19,0.88); backdrop-filter:blur(6px); border-right:1px solid var(--border); padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; max-height:100vh; min-height:0; overflow:hidden;}
+  .sidebar-head{flex-shrink:0;}
+  .sidebar-scroll{flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;}
+  .sidebar-scroll::-webkit-scrollbar{width:6px;}
+  .sidebar-scroll::-webkit-scrollbar-thumb{background:var(--bg-3); border-radius:3px;}
   .main{background:transparent; min-width:0;}
   .topbar{background:rgba(11,11,11,0.85); backdrop-filter:blur(10px); position:sticky; top:0; z-index:10;}
 
@@ -60,7 +64,7 @@
   .nav-item.active{background:var(--accent-dim); color:var(--accent); font-weight:600;}
   .nav-item.active .ic{opacity:1;}
   .nav-item:hover:not(.active){background:var(--bg-2); color:var(--text-0);}
-  .sidebar-foot{margin-top:auto; padding-top:14px; border-top:1px solid var(--border); flex-shrink:0;}
+  .sidebar-foot{margin-top:12px; padding-top:14px; border-top:1px solid var(--border); flex-shrink:0;}
   .agent-status{background:var(--bg-2); border:1px solid var(--border); border-radius:10px; padding:11px;}
   .agent-status .row1{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
   .agent-status .name{font-size:11.5px; font-weight:600;}
@@ -239,12 +243,13 @@
 
     .sidebar{
       display:flex;
+      flex-direction:column;
       position:fixed;
       top:0; left:0;
       width:min(300px, 88vw);
       height:100vh;
       height:100dvh;
-      max-height:none;
+      max-height:100dvh;
       z-index:220;
       transform:translateX(-100%);
       transition:transform 0.25s ease;
@@ -253,8 +258,21 @@
       border-right:1px solid var(--border-strong);
       pointer-events:auto;
       -webkit-tap-highlight-color:rgba(255,77,0,0.2);
+      overflow:hidden;
+      padding:16px 14px calc(12px + env(safe-area-inset-bottom, 0px));
     }
-    .sidebar.open{transform:translateX(0);}
+    .sidebar-scroll{
+      flex:1;
+      min-height:0;
+      overflow-y:scroll;
+      overflow-x:hidden;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior:contain;
+      touch-action:pan-y;
+      padding-right:4px;
+      margin-right:-4px;
+    }
+    .sidebar.open{transform:translateX(0); touch-action:pan-y;}
     .sidebar .nav-item{color:var(--text-0); font-size:14px;}
     .sidebar .nav-item .ic{opacity:1;}
     .sidebar .nav-label{color:var(--text-1);}
@@ -276,6 +294,8 @@
       visibility:visible;
       pointer-events:auto;
     }
+    body.sidebar-open{overflow:hidden;}
+    body.sidebar-open .main{touch-action:none;}
 
     .menu-btn{
       display:flex;
@@ -413,24 +433,26 @@
       <button type="button" class="sidebar-close" aria-label="Close menu" onclick="closeSidebar()">×</button>
     </div>
 
-    <div class="nav-group">
-      <div class="nav-label">Console</div>
-      <div class="nav-item active" onclick="showPage('overview', this)"><span class="ic">▣</span> Overview</div>
-      <div class="nav-item" onclick="showPage('matching', this)"><span class="ic">◧</span> Task Feed</div>
-      <div class="nav-item" onclick="showPage('negotiation', this)"><span class="ic">⇄</span> Negotiation</div>
-    </div>
-    <div class="nav-group">
-      <div class="nav-label">Insights</div>
-      <div class="nav-item" onclick="showPage('analytics', this)"><span class="ic">📈</span> Analytics</div>
-    </div>
-    <div class="nav-group">
-      <div class="nav-label">Integrations</div>
-      <div class="nav-item" onclick="showPage('mcp', this)"><span class="ic">{ }</span> MCP Tools</div>
-    </div>
-    <div class="nav-group dev-only">
-      <div class="nav-label">Developer</div>
-      <div class="nav-item" onclick="showPage('dev-api', this)"><span class="ic">⚡</span> API & Integration</div>
-      <div class="nav-item" onclick="showPage('debug', this)"><span class="ic">⌁</span> Debug Logs</div>
+    <div class="sidebar-scroll" id="sidebarScroll">
+      <div class="nav-group">
+        <div class="nav-label">Console</div>
+        <div class="nav-item active" onclick="showPage('overview', this)"><span class="ic">▣</span> Overview</div>
+        <div class="nav-item" onclick="showPage('matching', this)"><span class="ic">◧</span> Task Feed</div>
+        <div class="nav-item" onclick="showPage('negotiation', this)"><span class="ic">⇄</span> Negotiation</div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Insights</div>
+        <div class="nav-item" onclick="showPage('analytics', this)"><span class="ic">📈</span> Analytics</div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Integrations</div>
+        <div class="nav-item" onclick="showPage('mcp', this)"><span class="ic">{ }</span> MCP Tools</div>
+      </div>
+      <div class="nav-group dev-only">
+        <div class="nav-label">Developer</div>
+        <div class="nav-item" onclick="showPage('dev-api', this)"><span class="ic">⚡</span> API & Integration</div>
+        <div class="nav-item" onclick="showPage('debug', this)"><span class="ic">⌁</span> Debug Logs</div>
+      </div>
     </div>
 
     <div class="sidebar-foot">
@@ -1303,7 +1325,7 @@
     if (!sb || !ov) return;
     const open = sb.classList.toggle('open');
     ov.classList.toggle('open', open);
-    document.body.style.overflow = open ? 'hidden' : '';
+    document.body.classList.toggle('sidebar-open', open);
   }
 
   function closeSidebar() {
@@ -1311,7 +1333,7 @@
     const ov = document.getElementById('sidebarOverlay');
     if (sb) sb.classList.remove('open');
     if (ov) ov.classList.remove('open');
-    document.body.style.overflow = '';
+    document.body.classList.remove('sidebar-open');
   }
 
   // Page routing
