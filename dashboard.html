@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="assets/logo/apple-touch-icon.png?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('quorix-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
 <style>
   :root{
     --bg-0:#0B0B0B; --bg-1:#131313; --bg-2:#181818; --bg-3:#1F1F1F;
@@ -19,23 +20,33 @@
     --success:#17C97A; --success-dim:rgba(23,201,122,0.12);
     --warning:#F2A900; --warning-dim:rgba(242,169,0,0.12);
     --danger:#FF3B3B; --danger-dim:rgba(255,59,59,0.12);
+    --glass:rgba(19,19,19,0.58); --glass-strong:rgba(22,22,22,0.78); --glass-nav:rgba(19,19,19,0.72);
     --mono:'JetBrains Mono',monospace; --sans:'Inter',-apple-system,sans-serif;
     --radius:14px; --radius-sm:8px;
   }
+  [data-theme="light"]{
+    --bg-0:#F4F1EC; --bg-1:rgba(255,255,255,0.78); --bg-2:rgba(255,255,255,0.62); --bg-3:#EDE8E2;
+    --border:rgba(20,18,16,0.08); --border-strong:rgba(20,18,16,0.14);
+    --text-0:#141210; --text-1:#4A4540; --text-2:#7A746C;
+    --accent-dim:rgba(255,77,0,0.1); --accent-dim-strong:rgba(255,77,0,0.16);
+    --glass:rgba(255,255,255,0.58); --glass-strong:rgba(255,255,255,0.82); --glass-nav:rgba(255,255,255,0.72);
+  }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{min-height:100%;}
-  body{background:var(--bg-0); color:var(--text-0); font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased; overflow-x:hidden;}
+  body{background:var(--bg-0); color:var(--text-0); font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased; overflow-x:hidden; transition:background 0.35s ease, color 0.35s ease;}
   a{text-decoration:none; color:inherit;}
 
-  #bgCanvas{position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none;}
+  #ambientCanvas,#bgCanvas{position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none;}
   .dash{position:relative; z-index:1; display:grid; grid-template-columns:240px 1fr; min-height:100vh;}
-  .sidebar{background:rgba(19,19,19,0.88); backdrop-filter:blur(6px); border-right:1px solid var(--border); padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; max-height:100vh; min-height:0; overflow:hidden;}
+  .sidebar{background:var(--glass-nav); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-right:1px solid var(--border); padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; max-height:100vh; min-height:0; overflow:hidden;}
   .sidebar-head{flex-shrink:0;}
   .sidebar-scroll{flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;}
   .sidebar-scroll::-webkit-scrollbar{width:6px;}
   .sidebar-scroll::-webkit-scrollbar-thumb{background:var(--bg-3); border-radius:3px;}
   .main{background:transparent; min-width:0;}
-  .topbar{background:rgba(11,11,11,0.85); backdrop-filter:blur(10px); position:sticky; top:0; z-index:10;}
+  .topbar{background:var(--glass-nav); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); position:sticky; top:0; z-index:10;}
+  .theme-toggle{width:36px; height:36px; border-radius:8px; border:1px solid var(--border-strong); background:var(--bg-2); color:var(--text-0); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:15px; transition:border-color 0.2s, transform 0.2s; flex-shrink:0;}
+  .theme-toggle:hover{border-color:var(--accent); transform:translateY(-1px);}
 
   .btn{font-family:var(--sans); font-weight:600; font-size:13.5px; border-radius:10px; padding:10px 18px; border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:8px;}
   .btn-primary{background:var(--accent); color:#fff;} .btn-primary:hover{background:var(--accent-hover);}
@@ -85,13 +96,13 @@
   .page-head .sub{color:var(--text-2); font-size:12px; margin-top:2px;}
 
   .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;}
-  .stat-card{background:rgba(19,19,19,0.92); border:1px solid var(--border); border-radius:var(--radius); padding:16px;}
+  .stat-card{background:var(--glass-strong); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:var(--radius); padding:16px;}
   .stat-card .lbl{font-size:10.5px; color:var(--text-2); font-family:var(--mono); text-transform:uppercase; margin-bottom:8px;}
   .stat-card .val{font-size:22px; font-weight:700; font-family:var(--mono);}
   .stat-card .delta{font-size:11px; margin-top:5px; font-weight:600;}
   .delta.up{color:var(--success);} .delta.down{color:var(--danger);}
 
-  .panel{background:rgba(19,19,19,0.92); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:18px;}
+  .panel{background:var(--glass-strong); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:18px;}
   .panel-head{display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid var(--border);}
   .panel-head h3{font-size:13.5px;}
   .panel-head .link{font-size:11.5px; color:var(--accent); font-weight:600; cursor:pointer;}
@@ -187,7 +198,7 @@
   .mcp-tools-list{display:flex; flex-direction:column; gap:10px; max-height:520px; overflow-y:auto; padding:4px 2px 4px 0;}
   .mcp-tools-list::-webkit-scrollbar{width:6px;}
   .mcp-tools-list::-webkit-scrollbar-thumb{background:var(--bg-3); border-radius:3px;}
-  .mcp-tool-row{display:flex; align-items:center; gap:16px; padding:16px 18px; background:rgba(25,25,25,0.7); border:1px solid var(--border); border-radius:12px; transition:border-color 0.15s ease;}
+  .mcp-tool-row{display:flex; align-items:center; gap:16px; padding:16px 18px; background:var(--glass); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid var(--border); border-radius:12px; transition:border-color 0.15s ease;}
   .mcp-tool-row:hover{border-color:var(--border-strong);}
   .mcp-tool-main{flex:1; min-width:0;}
   .mcp-tool-name{font-size:14px; font-weight:600; color:var(--text-0); margin-bottom:2px;}
@@ -379,8 +390,9 @@
       bottom:0; left:0; right:0;
       height:calc(64px + env(safe-area-inset-bottom, 0px));
       padding-bottom:env(safe-area-inset-bottom, 0px);
-      background:rgba(19,19,19,0.96);
-      backdrop-filter:blur(12px);
+      background:var(--glass-nav);
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
       border-top:1px solid var(--border);
       z-index:100;
     }
@@ -444,7 +456,7 @@
 </head>
 <body>
 
-<canvas id="bgCanvas"></canvas>
+<canvas id="ambientCanvas" aria-hidden="true"></canvas>
 
 <div id="toastBanner" style="display:none; position:fixed; top:24px; left:50%; transform:translateX(-50%); z-index:9999; background:rgba(24,24,24,0.9); backdrop-filter:blur(16px); border:1px solid #FF4D00; border-radius:8px; padding:16px 24px; color:#F5F5F5; font-size:13px; font-weight:500; align-items:center; gap:16px; box-shadow:0 8px 32px rgba(0,0,0,0.5);">
   <span id="toastMessage"></span>
@@ -496,6 +508,7 @@
       <button type="button" class="menu-btn" id="menuBtn" aria-label="Open navigation menu" onclick="toggleSidebar()">☰</button>
       <input class="search" id="topAddressSearch" placeholder="Scan Address reputation..." onchange="runTopSearch(this.value)">
       <div class="topbar-right">
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch theme"><span class="theme-toggle-icon">☾</span></button>
         <span class="pill pill-warning" id="connectionPill">Connecting</span>
         <div class="wallet-pill" id="topWalletPill" style="border:1px solid var(--border-strong); border-radius:100px; padding:4px 12px; font-family:var(--mono); font-size:11px; color:var(--text-1);">X Layer</div>
       </div>
@@ -2432,110 +2445,8 @@
   }
 </script>
 
-<script>
-/* ============================================================
-   QuorixASP animated background — subdued "Agent Stream".
-   Same data-stream + agent-glyph language as the landing page,
-   held at low constant intensity and slow speed so panels stay
-   fully readable — depth without distraction.
-   ============================================================ */
-(function(){
-  const canvas = document.getElementById('bgCanvas');
-  const ctx = canvas.getContext('2d');
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  let paths = [];
-  function buildPaths(){
-    const w = innerWidth, h = innerHeight;
-    paths = [
-      { p0:{x:-0.05*w,y:0.12*h}, c1:{x:0.3*w,y:-0.05*h}, c2:{x:0.6*w,y:0.28*h}, p1:{x:1.05*w,y:0.08*h}, nodes:[0.3,0.75] },
-      { p0:{x:-0.05*w,y:0.9*h},  c1:{x:0.35*w,y:0.7*h},  c2:{x:0.7*w,y:1.05*h}, p1:{x:1.05*w,y:0.85*h}, nodes:[0.35,0.8] },
-      { p0:{x:-0.05*w,y:0.5*h},  c1:{x:0.4*w,y:0.3*h},   c2:{x:0.65*w,y:0.65*h},p1:{x:1.05*w,y:0.45*h}, nodes:[0.5] }
-    ];
-    paths.forEach(p=>{
-      p.particles = [{t:Math.random(), speed:0.00014+Math.random()*0.00006}];
-      p.nodeState = p.nodes.map(()=>({a:0}));
-    });
-  }
-  function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; buildPaths(); }
-  window.addEventListener('resize', resize);
-  resize();
-
-  function bez(t,p0,c1,c2,p1){
-    const mt=1-t;
-    return {
-      x: mt*mt*mt*p0.x + 3*mt*mt*t*c1.x + 3*mt*t*t*c2.x + t*t*t*p1.x,
-      y: mt*mt*mt*p0.y + 3*mt*mt*t*c1.y + 3*mt*t*t*c2.y + t*t*t*p1.y
-    };
-  }
-
-  const cur = {line:0.14, glow:0.18, pulse:0.3, node:0.4, speed:0.35};
-
-  function drawGlow(x,y,r,alpha){
-    if(alpha<=0.002) return;
-    const g = ctx.createRadialGradient(x,y,0,x,y,r);
-    g.addColorStop(0, `rgba(255,77,0,${alpha})`);
-    g.addColorStop(1, 'rgba(255,77,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(x-r,y-r,r*2,r*2);
-  }
-  function roundRect(ctx,x,y,w,h,r){
-    ctx.beginPath();
-    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
-  }
-
-  function frame(){
-    ctx.fillStyle = '#0B0B0B';
-    ctx.fillRect(0,0,innerWidth,innerHeight);
-
-    drawGlow(innerWidth*0.88, innerHeight*0.08, 400, cur.glow*0.28);
-    drawGlow(innerWidth*0.06, innerHeight*0.92, 360, cur.glow*0.2);
-
-    paths.forEach(p=>{
-      ctx.strokeStyle = `rgba(255,255,255,${0.045*cur.line*3.2})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(p.p0.x,p.p0.y);
-      ctx.bezierCurveTo(p.c1.x,p.c1.y,p.c2.x,p.c2.y,p.p1.x,p.p1.y);
-      ctx.stroke();
-
-      p.particles.forEach(pt=>{
-        if(!reduceMotion) pt.t = (pt.t + pt.speed*cur.speed*8) % 1;
-        for(let i=0;i<8;i++){
-          const tt = (pt.t - i*0.006 + 1)%1;
-          const pos = bez(tt,p.p0,p.c1,p.c2,p.p1);
-          const a = (1-i/8)*0.4*cur.pulse;
-          ctx.beginPath();
-          ctx.fillStyle = `rgba(255,140,70,${a})`;
-          ctx.arc(pos.x,pos.y,1.8*(1-i/12),0,Math.PI*2);
-          ctx.fill();
-        }
-      });
-
-      p.nodes.forEach((nt,i)=>{
-        const pos = bez(nt,p.p0,p.c1,p.c2,p.p1);
-        let hit=false;
-        p.particles.forEach(pt=>{ if(Math.abs(pt.t-nt)<0.02) hit=true; });
-        p.nodeState[i].a = hit ? 1 : p.nodeState[i].a*0.95;
-        const act = p.nodeState[i].a;
-        const size = (6+act*2.5)*cur.node*2;
-        drawGlow(pos.x,pos.y, 24+act*16, act*0.3*cur.node);
-        ctx.save();
-        ctx.translate(pos.x,pos.y);
-        ctx.strokeStyle = `rgba(255,255,255,${(0.1+act*0.4)*cur.node*2})`;
-        ctx.fillStyle = `rgba(255,77,0,${(0.05+act*0.3)*cur.node*2})`;
-        ctx.lineWidth = 1;
-        roundRect(ctx,-size/2,-size/2,size,size,3);
-        ctx.fill(); ctx.stroke();
-        ctx.restore();
-      });
-    });
-
-    requestAnimationFrame(frame);
-  }
-  frame();
-})();
-</script>
+<script src="assets/theme.js?v=1"></script>
+<script src="assets/ambient-bg.js?v=1"></script>
 
 </body>
 </html>

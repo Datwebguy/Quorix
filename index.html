@@ -8,9 +8,12 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32x32.png?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/landing.css?v=5">
+<link rel="stylesheet" href="assets/landing.css?v=6">
+<script>try{var t=localStorage.getItem('quorix-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
 </head>
 <body>
+
+<canvas id="ambientCanvas" aria-hidden="true"></canvas>
 
 <div id="cursorGlow" aria-hidden="true"></div>
 <div id="scrollOrb" aria-hidden="true"></div>
@@ -22,8 +25,11 @@
   <a href="/#ecosystem" onclick="closeMobileNav()">Ecosystem</a>
   <a href="/faq" onclick="closeMobileNav()">FAQ</a>
   <a href="/dashboard" onclick="closeMobileNav()">Console</a>
+  <div class="drawer-top">
+    <span style="font-size:12px;font-weight:600;color:var(--text-2);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;">Menu</span>
+    <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch theme"><span class="theme-toggle-icon">☾</span></button>
+  </div>
   <div class="drawer-actions">
-    <button class="btn liquid-glass" onclick="location.href='/login'">Sign In</button>
     <button class="btn btn-primary" onclick="location.href='/login'">Launch App</button>
   </div>
 </nav>
@@ -44,13 +50,12 @@
     <a href="/dashboard">Console</a>
   </div>
   <div class="nav-actions">
-    <button class="btn liquid-glass" onclick="location.href='/login'">Sign In</button>
+    <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch theme"><span class="theme-toggle-icon">☾</span></button>
     <button class="btn btn-primary" onclick="location.href='/login'">Launch App</button>
   </div>
 </nav>
 
 <section class="hero" id="top">
-  <canvas id="bgCanvas" class="hero-canvas" aria-hidden="true"></canvas>
   <div class="hero-inner" id="heroMoveable">
     <div class="eyebrow center reveal">Agentic Commerce · OKX.AI Registered ASP</div>
     <h1 class="hero-title reveal reveal-delay-1">
@@ -196,7 +201,7 @@
       <h5>Resources</h5>
       <ul>
         <li><a href="/faq">FAQ</a></li>
-        <li><a href="/login">Sign In</a></li>
+        <li><a href="/login">Launch App</a></li>
         <li><a href="/dashboard">Dashboard</a></li>
         <li><a href="https://github.com/Datwebguy/Quorix" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="/api/status" target="_blank" rel="noopener">API Status</a></li>
@@ -258,49 +263,6 @@ function closeMobileNav(){
   },{passive:true});
 })();
 
-/* Hero canvas animation */
-(function(){
-  const hero=document.querySelector('.hero');
-  const canvas=document.getElementById('bgCanvas');
-  if(!hero||!canvas) return;
-  const ctx=canvas.getContext('2d');
-  const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-  let paths=[];
-  function build(){
-    const w=hero.clientWidth,h=hero.clientHeight;
-    paths=[
-      {p0:{x:-0.05*w,y:0.2*h},c1:{x:0.3*w,y:0.05*h},c2:{x:0.55*w,y:0.4*h},p1:{x:1.05*w,y:0.15*h}},
-      {p0:{x:-0.05*w,y:0.6*h},c1:{x:0.35*w,y:0.8*h},c2:{x:0.65*w,y:0.35*h},p1:{x:1.05*w,y:0.65*h}},
-      {p0:{x:-0.05*w,y:0.9*h},c1:{x:0.4*w,y:0.55*h},c2:{x:0.7*w,y:1.05*h},p1:{x:1.05*w,y:0.95*h}}
-    ];
-    paths.forEach(p=>{p.particles=[{t:Math.random(),speed:0.0002+Math.random()*0.0001}];});
-  }
-  function resize(){
-    const dpr=Math.min(devicePixelRatio||1,2),w=hero.clientWidth,h=hero.clientHeight;
-    canvas.width=w*dpr;canvas.height=h*dpr;canvas.style.width=w+'px';canvas.style.height=h+'px';
-    ctx.setTransform(dpr,0,0,dpr,0,0);build();
-  }
-  window.addEventListener('resize',resize);resize();
-  function bez(t,p0,c1,c2,p1){
-    const mt=1-t;return{x:mt*mt*mt*p0.x+3*mt*mt*t*c1.x+3*mt*t*t*c2.x+t*t*t*p1.x,y:mt*mt*mt*p0.y+3*mt*mt*t*c1.y+3*mt*t*t*c2.y+t*t*t*p1.y};
-  }
-  function frame(){
-    const w=hero.clientWidth,h=hero.clientHeight;
-    ctx.fillStyle='#0B0B0B';ctx.fillRect(0,0,w,h);
-    paths.forEach(p=>{
-      ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(p.p0.x,p.p0.y);ctx.bezierCurveTo(p.c1.x,p.c1.y,p.c2.x,p.c2.y,p.p1.x,p.p1.y);ctx.stroke();
-      p.particles.forEach(pt=>{
-        if(!reduce)pt.t=(pt.t+pt.speed)%1;
-        const pos=bez(pt.t,p.p0,p.c1,p.c2,p.p1);
-        ctx.beginPath();ctx.fillStyle='rgba(255,77,0,0.5)';ctx.arc(pos.x,pos.y,2.5,0,Math.PI*2);ctx.fill();
-      });
-    });
-    requestAnimationFrame(frame);
-  }
-  frame();
-})();
-
 /* Hero text — rotate verbs + parallax drift */
 (function(){
   const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -352,5 +314,7 @@ function closeMobileNav(){
   tick();
 })();
 </script>
+<script src="assets/theme.js?v=1"></script>
+<script src="assets/ambient-bg.js?v=1"></script>
 </body>
 </html>
