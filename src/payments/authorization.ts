@@ -2,8 +2,8 @@
  * OKX Agent Payments Protocol — buyer authorization header extraction.
  *
  * v2 clients send PAYMENT-SIGNATURE; legacy v1 clients send X-PAYMENT.
- * QuorixASP gates metered A2MCP calls on header presence until OKX publishes
- * a server-side facilitator verify CLI we can call from the broker daemon.
+ * Header extraction is step 1 only — settlement is confirmed in payments/service.ts
+ * via facilitator verify (production) or structural + ledger checks (in development).
  */
 
 export type PaymentAuthHeaderName = 'PAYMENT-SIGNATURE' | 'X-PAYMENT';

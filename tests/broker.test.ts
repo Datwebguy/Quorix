@@ -20,7 +20,8 @@ import {
   requiresLiveOkxSettlementPath,
 } from '../src/onchainos/settlement';
 import { portalUrlForJob, portalLinkHint } from '../src/onchainos/portalUrls';
-import { verifyPaymentAuthorization } from '../src/payments/verify';
+import path from 'path';
+import { verifyPayment, resetPaymentLedgerForTests } from '../src/payments/verify';
 import { getA2mcpPaymentReadiness } from '../src/config/paymentReadiness';
 
 async function runTests() {
@@ -149,6 +150,10 @@ async function runTests() {
       'x402 challenge exposes billingTier in_development'
     );
     assert(challenge.body.externallyBillable === false, 'x402 challenge marks externallyBillable false');
+    assert(
+      challenge.body.settlementVerification === 'structural',
+      'x402 challenge exposes settlementVerification structural'
+    );
 
     const headersV2 = { 'payment-signature': 'signed-proof-base64' };
     const auth = extractPaymentAuthorization(headersV2);
@@ -162,6 +167,9 @@ async function runTests() {
     );
     assert(hasPaymentAuthorization({}) === false, 'Missing payment headers return false');
 
+    const testLedgerPath = path.join(process.cwd(), '.data', `test-ledger-${Date.now()}.jsonl`);
+    resetPaymentLedgerForTests(testLedgerPath);
+
     const payTo = process.env.A2MCP_PAY_TO_WALLET || '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
     const validPayload = Buffer.from(
       JSON.stringify({
@@ -173,24 +181,28 @@ async function runTests() {
       'utf8'
     ).toString('base64');
 
-    const structuralOk = await verifyPaymentAuthorization(
+    const structuralOk = await verifyPayment(
       { headerName: 'PAYMENT-SIGNATURE', value: validPayload },
       { payTo, amountAtomic: '5000', operation: 'reputation_audit' }
     );
     assert(structuralOk.ok === true, 'Structural verify accepts valid payTo/amount payload');
     assert(structuralOk.level === 'beta', 'Default structural verify is beta level');
+    assert(structuralOk.settlementVerified === false, 'Structural verify does not confirm settlement');
+    assert(structuralOk.billingTier === 'in_development', 'Structural success stays in_development tier');
+    assert(structuralOk.externallyBillable === false, 'Structural success is not externally billable');
+    assert(Boolean(structuralOk.ledgerId), 'Successful verify writes payment ledger entry');
 
-    const wrongPayTo = await verifyPaymentAuthorization(
+    const wrongPayTo = await verifyPayment(
       { headerName: 'PAYMENT-SIGNATURE', value: validPayload },
       { payTo: '0x0000000000000000000000000000000000000001', amountAtomic: '5000', operation: 'x' }
     );
     assert(wrongPayTo.ok === false, 'Structural verify rejects payTo mismatch');
 
-    const replay = await verifyPaymentAuthorization(
+    const replay = await verifyPayment(
       { headerName: 'PAYMENT-SIGNATURE', value: validPayload },
       { payTo, amountAtomic: '5000', operation: 'reputation_audit' }
     );
-    assert(replay.ok === false, 'Structural verify rejects signature replay');
+    assert(replay.ok === false, 'Structural verify rejects signature replay via ledger');
 
     const readiness = getA2mcpPaymentReadiness();
     assert(readiness.tier === 'in_development', 'Structural mode reports in_development billing tier');

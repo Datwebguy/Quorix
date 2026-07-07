@@ -22,7 +22,7 @@ import {
   hasPaymentAuthorization,
 } from './payments/authorization';
 import { buildPayPerCallChallenge, priceUsdtForOperation } from './payments/x402Challenge';
-import { verifyPaymentAuthorization, verificationLevelLabel } from './payments/verify';
+import { verifyPayment, getPaymentLedger } from './payments/verify';
 import { shortenRpcError } from './blockchain/rpcTransport';
 import { logErrorOnce } from './utils/logDedupe';
 import express from 'express';
@@ -377,6 +377,21 @@ async function main() {
       ok: true,
       uptimeSeconds: Math.floor(process.uptime()),
       version: "1.0.0"
+    });
+  });
+
+  /** Operator audit trail for verified x402 payments (digest truncated in response). */
+  app.get('/api/payments/audit', (req: any, res: any) => {
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
+    const ledger = getPaymentLedger();
+    const readiness = getA2mcpPaymentReadiness();
+    res.json({
+      a2mcpBilling: readiness,
+      stats: ledger.getStats(),
+      entries: ledger.listRecent(limit).map((e) => ({
+        ...e,
+        signatureDigest: `${e.signatureDigest.slice(0, 12)}…`,
+      })),
     });
   });
 
@@ -744,9 +759,7 @@ async function main() {
         }
       }
 
-      let paymentVerification:
-        | Awaited<ReturnType<typeof verifyPaymentAuthorization>>
-        | undefined;
+      let paymentVerification: Awaited<ReturnType<typeof verifyPayment>> | undefined;
 
       if (
         tool === 'pay_per_call_utility' &&
@@ -758,11 +771,15 @@ async function main() {
         const amountAtomic = String(
           Math.round(parseFloat(priceUsdt) * 1_000_000)
         );
-        paymentVerification = await verifyPaymentAuthorization(paymentAuthorization, {
-          payTo: ENV.A2MCP_PAY_TO_WALLET,
-          amountAtomic,
-          operation,
-        });
+        paymentVerification = await verifyPayment(
+          paymentAuthorization,
+          {
+            payTo: ENV.A2MCP_PAY_TO_WALLET,
+            amountAtomic,
+            operation,
+          },
+          { callerId }
+        );
         if (!paymentVerification.ok) {
           return res.status(402).json({
             ok: false,
@@ -777,6 +794,10 @@ async function main() {
             meta: {
               verifyMode: paymentVerification.mode,
               verifyLevel: paymentVerification.level,
+              settlementVerified: paymentVerification.settlementVerified,
+              settlementVerification: paymentVerification.settlementVerification,
+              billingTier: paymentVerification.billingTier,
+              externallyBillable: paymentVerification.externallyBillable,
             },
           });
         }

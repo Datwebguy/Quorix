@@ -84,6 +84,12 @@ export const ENV = {
   /** Optional x402 facilitator verify endpoint (e.g. CDP /v2/x402/verify). Empty = structural only. */
   X402_FACILITATOR_VERIFY_URL: process.env.X402_FACILITATOR_VERIFY_URL || '',
 
+  /**
+   * Append-only JSONL audit log for successful x402 verifications (replay protection).
+   * Defaults to /data/payment-ledger.jsonl on Fly volume, else ./.data/payment-ledger.jsonl
+   */
+  PAYMENT_LEDGER_PATH: process.env.PAYMENT_LEDGER_PATH || '',
+
   /** ASP communication wallet shown in /api/status (defaults to A2MCP pay-to wallet). */
   COMMUNICATION_ADDRESS:
     process.env.COMMUNICATION_ADDRESS ||

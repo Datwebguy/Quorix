@@ -25,6 +25,7 @@ build/
 
 # --- Dev scratch & probes (test emails, wallet fixtures) ---
 scratch/
+.data/
 
 # --- Logs ---
 *.log

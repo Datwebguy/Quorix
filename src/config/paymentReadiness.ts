@@ -1,4 +1,6 @@
 import { ENV } from './env';
+import { getPaymentLedger } from '../payments/ledger';
+import type { SettlementVerificationKind } from '../payments/types';
 
 /** How trustworthy the A2MCP x402 payment gate is for external buyers. */
 export type A2mcpBillingTier =
@@ -17,7 +19,14 @@ export interface A2mcpPaymentReadiness {
   facilitatorConfigured: boolean;
   payToWalletConfigured: boolean;
   x402Enabled: boolean;
+  /** Best verification the server can perform today (not per-request outcome). */
+  settlementVerification: SettlementVerificationKind;
   disclaimer: string;
+  paymentLedger?: {
+    path: string;
+    entryCount: number;
+    persisted: boolean;
+  };
 }
 
 /**
@@ -30,6 +39,15 @@ export function getA2mcpPaymentReadiness(): A2mcpPaymentReadiness {
   const facilitatorConfigured = Boolean((ENV.X402_FACILITATOR_VERIFY_URL || '').trim());
   const verifyMode = ENV.A2MCP_PAYMENT_VERIFY_MODE;
   const x402Enabled = ENV.A2MCP_X402_ENABLED;
+  const ledgerStats = getPaymentLedger().getStats();
+
+  const baseLedger = {
+    paymentLedger: {
+      path: ledgerStats.path,
+      entryCount: ledgerStats.entryCount,
+      persisted: ledgerStats.persisted,
+    },
+  };
 
   if (!x402Enabled) {
     return {
@@ -40,8 +58,10 @@ export function getA2mcpPaymentReadiness(): A2mcpPaymentReadiness {
       facilitatorConfigured,
       payToWalletConfigured,
       x402Enabled,
+      settlementVerification: 'none',
       disclaimer:
         'A2MCP metered billing is disabled (A2MCP_X402_ENABLED=false). pay_per_call_utility runs without payment gate.',
+      ...baseLedger,
     };
   }
 
@@ -54,8 +74,10 @@ export function getA2mcpPaymentReadiness(): A2mcpPaymentReadiness {
       facilitatorConfigured,
       payToWalletConfigured,
       x402Enabled,
+      settlementVerification: 'none',
       disclaimer:
         'A2MCP x402 is enabled but A2MCP_PAY_TO_WALLET is not set. Metered billing cannot settle.',
+      ...baseLedger,
     };
   }
 
@@ -68,8 +90,10 @@ export function getA2mcpPaymentReadiness(): A2mcpPaymentReadiness {
       facilitatorConfigured,
       payToWalletConfigured,
       x402Enabled,
+      settlementVerification: 'facilitator',
       disclaimer:
-        'Payments verified via OKX/CDP x402 facilitator before metered execution.',
+        'Server configured for facilitator settlement verify. Per-payment billingTier=production only when facilitator returns valid=true.',
+      ...baseLedger,
     };
   }
 
@@ -82,8 +106,10 @@ export function getA2mcpPaymentReadiness(): A2mcpPaymentReadiness {
       facilitatorConfigured,
       payToWalletConfigured,
       x402Enabled,
+      settlementVerification: 'none',
       disclaimer:
-        'INSECURE DEV MODE: only checks header presence. Do not use in production.',
+        'INSECURE DEV MODE: only checks header presence. Blocked when NODE_ENV=production.',
+      ...baseLedger,
     };
   }
 
@@ -95,9 +121,11 @@ export function getA2mcpPaymentReadiness(): A2mcpPaymentReadiness {
     facilitatorConfigured,
     payToWalletConfigured,
     x402Enabled,
+    settlementVerification: 'structural',
     disclaimer:
       verifyMode === 'facilitator' && !facilitatorConfigured
         ? 'Facilitator mode selected but X402_FACILITATOR_VERIFY_URL is unset. Falling back to structural checks — on-chain settlement NOT confirmed.'
-        : 'IN DEVELOPMENT: HTTP 402 challenges work, but payments are verified structurally (payTo/amount/replay) only. On-chain settlement is NOT confirmed until facilitator verify is wired for X Layer (chain 196).',
+        : 'IN DEVELOPMENT: structural verify only (payTo/amount/ledger replay). On-chain settlement NOT confirmed until facilitator verify is wired for X Layer (chain 196).',
+    ...baseLedger,
   };
 }

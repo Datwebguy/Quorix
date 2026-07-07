@@ -33,6 +33,7 @@ export interface X402Challenge {
     verifyMode: string;
     billingTier: string;
     externallyBillable: boolean;
+    settlementVerification: string;
   };
 }
 
@@ -151,6 +152,7 @@ export function buildPayPerCallChallenge(options: X402ChallengeOptions): X402Cha
       verifyMode: ENV.A2MCP_PAYMENT_VERIFY_MODE,
       billingTier: readiness.tier,
       externallyBillable: readiness.externallyBillable,
+      settlementVerification: readiness.settlementVerification,
     },
   };
 }
