@@ -20,6 +20,7 @@ import {
   requiresLiveOkxSettlementPath,
 } from '../src/onchainos/settlement';
 import { portalUrlForJob, portalLinkHint } from '../src/onchainos/portalUrls';
+import { verifyPaymentAuthorization } from '../src/payments/verify';
 
 async function runTests() {
   console.log('====================================================');
@@ -154,6 +155,36 @@ async function runTests() {
       'Falls back to legacy X-PAYMENT header'
     );
     assert(hasPaymentAuthorization({}) === false, 'Missing payment headers return false');
+
+    const payTo = process.env.A2MCP_PAY_TO_WALLET || '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
+    const validPayload = Buffer.from(
+      JSON.stringify({
+        payTo,
+        amount: '5000',
+        scheme: 'exact',
+        network: 'eip155:196',
+      }),
+      'utf8'
+    ).toString('base64');
+
+    const structuralOk = await verifyPaymentAuthorization(
+      { headerName: 'PAYMENT-SIGNATURE', value: validPayload },
+      { payTo, amountAtomic: '5000', operation: 'reputation_audit' }
+    );
+    assert(structuralOk.ok === true, 'Structural verify accepts valid payTo/amount payload');
+    assert(structuralOk.level === 'beta', 'Default structural verify is beta level');
+
+    const wrongPayTo = await verifyPaymentAuthorization(
+      { headerName: 'PAYMENT-SIGNATURE', value: validPayload },
+      { payTo: '0x0000000000000000000000000000000000000001', amountAtomic: '5000', operation: 'x' }
+    );
+    assert(wrongPayTo.ok === false, 'Structural verify rejects payTo mismatch');
+
+    const replay = await verifyPaymentAuthorization(
+      { headerName: 'PAYMENT-SIGNATURE', value: validPayload },
+      { payTo, amountAtomic: '5000', operation: 'reputation_audit' }
+    );
+    assert(replay.ok === false, 'Structural verify rejects signature replay');
 
     assert(
       portalUrlForJob('394079') === 'https://www.okx.ai/tasks/394079',

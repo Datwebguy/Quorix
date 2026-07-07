@@ -142,11 +142,11 @@ export const QUORIX_MCP_TOOLS: QuorixMcpToolDefinition[] = [
     description:
       'Runs the QuorixASP negotiation engine on a structured task proposal. Checks budget floor, timeline feasibility, and scope alignment. On acceptance or counter, returns a formal SLA proposal with priceWei, timelineDays, deliverables, and escrow release conditions.',
     whenToUse:
-      'Call before locking escrow — buyer agents send proposals; QuorixASP responds with SLA terms or counter-offers.',
+      'Call before opening OKX.AI negotiation — buyer agents send proposals; QuorixASP responds with SLA terms or counter-offers.',
     agentHints: [
       'Required: id, clientAddress, title, description, budgetWei (string), deadlineTimestamp (unix seconds).',
       'budgetWei minimum is typically 0.05 USDC (50000 atomic units, 6 decimals).',
-      'Response status ACCEPTED includes a proposal object ready for escrow filing.',
+      'On ACCEPTED: ASP contacts publisher on OKX.AI; escrow locks on publisher confirm-accept.',
     ],
     example: {
       id: 'task-proposal-001',

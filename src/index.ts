@@ -20,7 +20,8 @@ import {
   extractPaymentAuthorization,
   hasPaymentAuthorization,
 } from './payments/authorization';
-import { buildPayPerCallChallenge } from './payments/x402Challenge';
+import { buildPayPerCallChallenge, priceUsdtForOperation } from './payments/x402Challenge';
+import { verifyPaymentAuthorization, verificationLevelLabel } from './payments/verify';
 import { shortenRpcError } from './blockchain/rpcTransport';
 import { logErrorOnce } from './utils/logDedupe';
 import express from 'express';
@@ -347,7 +348,8 @@ async function main() {
       // Source: registered A2A service #23685 feeAmount from asp-register-precheck.js
       a2aServiceFeeUsdt: process.env.A2A_SERVICE_FEE_USDT || '0.5',
       name: 'QuorixASP Broker',
-      address: process.env.COMMUNICATION_ADDRESS || null,
+      address: ENV.COMMUNICATION_ADDRESS || null,
+      communicationAddress: ENV.COMMUNICATION_ADDRESS || null,
       escrowContract: ENV.ESCROW_CONTRACT_ADDRESS,
       ratingContract: ENV.RATING_CONTRACT_ADDRESS,
       rpcUrl: ENV.X_LAYER_RPC_URL,
@@ -355,7 +357,10 @@ async function main() {
       chainId: 196,
       status: 'Online',
       mcpToolsLive: QUORIX_MCP_TOOL_META.filter((t) => t.status === 'live').length,
+      mcpToolsPaymentGated: QUORIX_MCP_TOOL_META.filter((t) => t.status === 'payment-gated')
+        .length,
       mcpToolsTotal: QUORIX_MCP_TOOL_META.length,
+      a2mcpPaymentVerifyMode: ENV.A2MCP_PAYMENT_VERIFY_MODE,
       mcpManifest: '/api/mcp/manifest',
       mcpInvoke: '/api/mcp/invoke',
       okxIntegration: buildQuorixMcpManifest(
@@ -736,8 +741,47 @@ async function main() {
         }
       }
 
+      let paymentVerification:
+        | Awaited<ReturnType<typeof verifyPaymentAuthorization>>
+        | undefined;
+
+      if (
+        tool === 'pay_per_call_utility' &&
+        ENV.A2MCP_X402_ENABLED &&
+        paymentAuthorization
+      ) {
+        const operation = String(toolArgs?.operation || 'metered_call');
+        const priceUsdt = priceUsdtForOperation(operation);
+        const amountAtomic = String(
+          Math.round(parseFloat(priceUsdt) * 1_000_000)
+        );
+        paymentVerification = await verifyPaymentAuthorization(paymentAuthorization, {
+          payTo: ENV.A2MCP_PAY_TO_WALLET,
+          amountAtomic,
+          operation,
+        });
+        if (!paymentVerification.ok) {
+          return res.status(402).json({
+            ok: false,
+            tool,
+            data: null,
+            error: {
+              code: 'PAYMENT_REQUIRED',
+              message: paymentVerification.reason || 'Payment verification failed.',
+              hint: 'Sign a fresh x402 challenge via onchainos payment pay and replay with PAYMENT-SIGNATURE.',
+              retryable: true,
+            },
+            meta: {
+              verifyMode: paymentVerification.mode,
+              verifyLevel: paymentVerification.level,
+            },
+          });
+        }
+      }
+
       const result = await mcpServer.invokeTool(tool, toolArgs || {}, callerId, {
         paymentAuthorization,
+        paymentVerification,
       });
       const raw = result.content?.[0]?.text || '';
       const parsed = parseLegacyPayload(raw) as {

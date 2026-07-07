@@ -24,6 +24,8 @@ import {
   serializeAgentResponse,
 } from './responses';
 import type { PaymentAuthorization } from '../payments/authorization';
+import type { PaymentVerifyResult } from '../payments/verify';
+import { verificationLevelLabel } from '../payments/verify';
 import { ENV } from '../config/env';
 import {
   fetchLiveOkxEscrowSnapshot,
@@ -39,6 +41,7 @@ export interface McpToolResult {
 
 export interface McpInvokeOptions {
   paymentAuthorization?: PaymentAuthorization | null;
+  paymentVerification?: PaymentVerifyResult | null;
 }
 
 export class QuorixMcpServer {
@@ -397,9 +400,9 @@ export class QuorixMcpServer {
       ...evaluation,
       nextAction:
         evaluation.status === 'ACCEPTED'
-          ? 'File task and lock escrow on X Layer TaskManager.'
+          ? 'Contact the task publisher on OKX.AI (contact-user). Escrow locks when they confirm-accept and designate you as provider.'
           : evaluation.status === 'COUNTERED'
-            ? 'Review counter-proposal terms and renegotiate or accept.'
+            ? 'Review counter-proposal terms and renegotiate or accept on OKX.AI.'
             : 'Revise budget, timeline, or scope before resubmitting.',
     });
   }
@@ -488,7 +491,13 @@ export class QuorixMcpServer {
           });
         }
         const inner = await this.handleCheckReputation({ agentAddress });
-        return this.wrapMeteredDelegate(tool, operation, inner, options.paymentAuthorization);
+        return this.wrapMeteredDelegate(
+          tool,
+          operation,
+          inner,
+          options.paymentAuthorization,
+          options.paymentVerification
+        );
       }
       case 'escrow_check': {
         const taskId = String(args?.taskId || '').trim();
@@ -499,14 +508,26 @@ export class QuorixMcpServer {
           });
         }
         const inner = await this.handleCheckEscrow({ taskId });
-        return this.wrapMeteredDelegate(tool, operation, inner, options.paymentAuthorization);
+        return this.wrapMeteredDelegate(
+          tool,
+          operation,
+          inner,
+          options.paymentAuthorization,
+          options.paymentVerification
+        );
       }
       case 'task_match': {
         const inner = await this.handleMatchTasks({
           minScore: args?.minScore,
           limit: args?.limit,
         });
-        return this.wrapMeteredDelegate(tool, operation, inner, options.paymentAuthorization);
+        return this.wrapMeteredDelegate(
+          tool,
+          operation,
+          inner,
+          options.paymentAuthorization,
+          options.paymentVerification
+        );
       }
       default:
         return buildAgentError(tool, 'INVALID_ARGUMENT', `Unsupported operation "${operation}".`);
@@ -517,9 +538,12 @@ export class QuorixMcpServer {
     tool: string,
     operation: string,
     inner: AgentToolResponse,
-    payment?: PaymentAuthorization | null
+    payment?: PaymentAuthorization | null,
+    verification?: PaymentVerifyResult | null
   ): AgentToolResponse {
     if (!inner.ok) return inner;
+
+    const verifyLabel = verification ? verificationLevelLabel(verification) : 'not_verified';
 
     return buildAgentSuccess(tool, {
       operation,
@@ -528,8 +552,11 @@ export class QuorixMcpServer {
         settlementCurrencies: ['USDT', ...(ENV.USDG_TOKEN_ADDRESS ? ['USDG'] : [])],
         priceUsdt: ENV.A2MCP_OPERATION_PRICES[operation] || ENV.A2MCP_CALL_PRICE_USDT,
         paymentHeader: payment?.headerName || null,
-        verification:
-          'header_presence_only — facilitator verify not yet wired server-side in QuorixASP',
+        verifyMode: verification?.mode || ENV.A2MCP_PAYMENT_VERIFY_MODE,
+        verifyLevel: verification?.level || 'beta',
+        verification: verifyLabel,
+        verifyNote: verification?.reason,
+        payer: verification?.payer,
       },
       result: inner.data,
     });

@@ -924,7 +924,7 @@
     verify_task_proof: 'Confirm a deliverable matches the agreed proof reference.',
     evaluate_deal_proposal: 'Get an accept, counter-offer, or decline on a proposed deal.',
     match_market_tasks: 'Find open tasks on the OKX.AI marketplace that match your broker capabilities.',
-    pay_per_call_utility: 'Metered billing endpoint (requires payment channel setup).',
+    pay_per_call_utility: 'x402 metered billing — pick an operation and required fields, then pay via PAYMENT-SIGNATURE.',
   };
 
   function clearDebugLogs() {
@@ -1048,10 +1048,77 @@
             { value: 'task_match', label: 'Task match' },
           ],
         },
+        {
+          key: 'agentAddress',
+          label: 'Agent wallet (reputation_audit)',
+          type: 'text',
+          full: true,
+          placeholder: '0x… counterparty wallet',
+          walletDefault: true,
+          showFor: ['reputation_audit'],
+        },
+        {
+          key: 'taskId',
+          label: 'Task / job ID (escrow_check)',
+          type: 'text',
+          full: true,
+          placeholder: '0x… OKX jobId or decimal reference taskId',
+          showFor: ['escrow_check'],
+        },
+        {
+          key: 'minScore',
+          label: 'Min match score (task_match)',
+          type: 'number',
+          min: 0,
+          max: 100,
+          placeholder: '25',
+          showFor: ['task_match'],
+        },
+        {
+          key: 'limit',
+          label: 'Result limit (task_match)',
+          type: 'number',
+          min: 1,
+          max: 50,
+          placeholder: '10',
+          showFor: ['task_match'],
+        },
       ],
-      parseExample(ex) { return { operation: ex.operation || 'reputation_audit' }; },
-      build(v) { return { operation: (v.operation || 'reputation_audit').trim() }; },
-      validate(v) { return (v.operation || '').trim() ? null : 'Operation name is required.'; },
+      parseExample(ex) {
+        return {
+          operation: ex.operation || 'reputation_audit',
+          agentAddress: ex.agentAddress || '',
+          taskId: ex.taskId || '',
+          minScore: ex.minScore != null ? String(ex.minScore) : '25',
+          limit: ex.limit != null ? String(ex.limit) : '10',
+        };
+      },
+      build(v) {
+        const op = (v.operation || 'reputation_audit').trim();
+        const out = { operation: op };
+        if (op === 'reputation_audit' && (v.agentAddress || '').trim()) {
+          out.agentAddress = v.agentAddress.trim();
+        }
+        if (op === 'escrow_check' && (v.taskId || '').trim()) {
+          out.taskId = v.taskId.trim();
+        }
+        if (op === 'task_match') {
+          out.minScore = Math.min(100, Math.max(0, parseInt(v.minScore, 10) || 25));
+          out.limit = Math.min(50, Math.max(1, parseInt(v.limit, 10) || 10));
+        }
+        return out;
+      },
+      validate(v) {
+        const op = (v.operation || '').trim();
+        if (!op) return 'Operation name is required.';
+        if (op === 'reputation_audit' && !/^0x[a-fA-F0-9]{40}$/.test((v.agentAddress || '').trim())) {
+          return 'reputation_audit requires a valid 0x agent wallet address.';
+        }
+        if (op === 'escrow_check' && !(v.taskId || '').trim()) {
+          return 'escrow_check requires a task / job ID.';
+        }
+        return null;
+      },
     },
   };
 
@@ -1277,6 +1344,8 @@
     ui.fields.forEach((f) => {
       const wrap = document.createElement('div');
       wrap.className = 'mcp-field' + (f.full ? ' field-full' : '');
+      wrap.dataset.mcpFieldKey = f.key;
+      if (f.showFor) wrap.dataset.showFor = f.showFor.join(',');
       let value = initial[f.key] ?? '';
       if (f.walletDefault && !value && connectedUserWallet) value = connectedUserWallet;
 
@@ -1302,10 +1371,33 @@
 
       const el = wrap.querySelector('#mcpField_' + f.key);
       el.addEventListener('input', syncMcpRawJson);
-      el.addEventListener('change', syncMcpRawJson);
+      el.addEventListener('change', () => {
+        syncMcpRawJson();
+        if (toolName === 'pay_per_call_utility' && f.key === 'operation') {
+          updatePayPerCallFieldVisibility();
+        }
+      });
     });
 
+    if (toolName === 'pay_per_call_utility') updatePayPerCallFieldVisibility();
     syncMcpRawJson();
+  }
+
+  function updatePayPerCallFieldVisibility() {
+    const op = document.getElementById('mcpField_operation')?.value || 'reputation_audit';
+    document.querySelectorAll('#mcpSimpleForm [data-show-for]').forEach((wrap) => {
+      const allowed = (wrap.dataset.showFor || '').split(',').filter(Boolean);
+      wrap.style.display = allowed.length === 0 || allowed.includes(op) ? '' : 'none';
+    });
+  }
+
+  function formatProposalPrice(priceWei, tokenSymbol) {
+    const raw = BigInt(String(priceWei || '0'));
+    const sym = (tokenSymbol || 'USDT').toUpperCase();
+    if (sym === 'OKB' || sym === 'ETH') {
+      return `${(Number(raw) / 1e18).toFixed(4)} ${sym}`;
+    }
+    return `${(Number(raw) / 1e6).toFixed(2)} ${sym}`;
   }
 
   function loadToolInConsole(toolName, navigate = true) {
@@ -1871,7 +1963,7 @@
       document.getElementById('sidebarAgentMeta').textContent =
         `Agent #${brokerStatus.agentId} · ${brokerStatus.chain} (${brokerStatus.chainId})`;
       document.getElementById('overviewSub').textContent =
-        `Agent #${brokerStatus.agentId} on ${brokerStatus.chain} · ${brokerStatus.mcpToolsLive} live tools`;
+        `Agent #${brokerStatus.agentId} on ${brokerStatus.chain} · ${brokerStatus.mcpToolsLive} live + ${brokerStatus.mcpToolsPaymentGated || 0} x402 tools`;
     } catch (e) {}
   }
 
@@ -1895,10 +1987,12 @@
       });
 
       const liveCount = mcpToolsCatalog.filter((t) => t.status === 'live').length;
+      const gatedCount = mcpToolsCatalog.filter((t) => t.status === 'payment-gated').length;
       const base = LOCAL_DAEMON_URL.replace(/\/$/, '');
       document.getElementById('mcpSub').textContent =
-        `${liveCount} service${liveCount === 1 ? '' : 's'} available for agent integrations`;
-      document.getElementById('mcpLiveCount').textContent = `${liveCount} LIVE`;
+        `${liveCount} free + ${gatedCount} x402-gated tool${liveCount + gatedCount === 1 ? '' : 's'} for agent integrations`;
+      document.getElementById('mcpLiveCount').textContent =
+        gatedCount ? `${liveCount} LIVE · ${gatedCount} x402` : `${liveCount} LIVE`;
 
       const invokeEl = document.getElementById('mcpEndpointInvoke');
       const manifestEl = document.getElementById('mcpEndpointManifest');
@@ -2546,7 +2640,7 @@
         setupProceedAction(data.proposal.priceWei, deadline);
       } else if (data.status === 'COUNTERED') {
         addMessage('QA', `Counter offer: ${data.reason}`, 'a');
-        addMessage('QA', `Suggested terms:\n- Price: ${(Number(data.proposal.priceWei) / 1e18).toFixed(2)} OKB\n- Timeline: ${data.proposal.timelineDays} days\n- Deliverables:\n  * ${data.proposal.deliverables.join('\n  * ')}`, 'a');
+        addMessage('QA', `Suggested terms:\n- Price: ${formatProposalPrice(data.proposal.priceWei, paymentToken || taskCtx.tokenSymbol || 'USDT')}\n- Timeline: ${data.proposal.timelineDays} days\n- Deliverables:\n  * ${data.proposal.deliverables.join('\n  * ')}`, 'a');
         addMessage('CL', marketplaceJob
           ? `Counter offer looks good. Click ${proceedLabel} when ready.`
           : 'Counter offer looks good. Click File Agreement when ready.', 'b');

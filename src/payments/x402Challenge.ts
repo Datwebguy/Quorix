@@ -29,6 +29,7 @@ export interface X402Challenge {
     operation: string;
     hint: string;
     verificationGap: string;
+    verifyMode: string;
   };
 }
 
@@ -143,7 +144,10 @@ export function buildPayPerCallChallenge(options: X402ChallengeOptions): X402Cha
       hint:
         'Sign with onchainos payment pay --payload <PAYMENT-REQUIRED value>, then replay POST /api/mcp/invoke with PAYMENT-SIGNATURE.',
       verificationGap:
-        'QuorixASP currently gates on PAYMENT-SIGNATURE presence. Facilitator settlement verification is not yet wired server-side.',
+        ENV.A2MCP_PAYMENT_VERIFY_MODE === 'facilitator'
+          ? 'Facilitator verify enabled when X402_FACILITATOR_VERIFY_URL is configured.'
+          : 'Beta: structural verify (payTo/amount/replay). Set A2MCP_PAYMENT_VERIFY_MODE=facilitator + X402_FACILITATOR_VERIFY_URL for production settlement verify.',
+      verifyMode: ENV.A2MCP_PAYMENT_VERIFY_MODE,
     },
   };
 }

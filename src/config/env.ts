@@ -7,7 +7,7 @@ dotenv.config();
  * REFERENCE / HACKATHON on-chain deployments (X Layer Mainnet, chain 196).
  * These demonstrate escrow mechanics but are NOT the live okx.ai/tasks marketplace path.
  * Production task discovery uses `onchainos agent task-search` / `recommend-task`
- * (OKX aieco backend). See WALKTHROUGH.md.
+ * (OKX aieco backend). See README.md payment/escrow audit table.
  *
  * - TaskManager (USDC A2A Escrow): 0x599e23D6073426eBe357d03056258eEAa217e01D
  * - X402Rating (On-chain Reputation ratings): 0x85Be67F1A3c1f470A6c94b3C77fD326d3c0f1188
@@ -29,7 +29,7 @@ export const ENV = {
   USDG_TOKEN_ADDRESS: process.env.USDG_TOKEN_ADDRESS || '',
 
   // QuorixASP registered agent ID on AgentRegistry (required for createTask)
-  AGENT_ID: BigInt(process.env.AGENT_ID || '3827'),
+  AGENT_ID: BigInt(process.env.AGENT_ID || '4187'),
 
   // The OKX.AI native TaskManager (escrow) contract address on X Layer
   ESCROW_CONTRACT_ADDRESS: process.env.ESCROW_CONTRACT_ADDRESS || '0x599e23D6073426eBe357d03056258eEAa217e01D',
@@ -66,6 +66,29 @@ export const ENV = {
     process.env.A2MCP_X402_ENABLED !== undefined
       ? process.env.A2MCP_X402_ENABLED === 'true'
       : Boolean((process.env.A2MCP_PAY_TO_WALLET || '').trim()),
+
+  /**
+   * x402 payment verification before metered execution:
+   *   facilitator — POST to X402_FACILITATOR_VERIFY_URL (production when supported)
+   *   structural  — beta default: payTo/amount/replay checks on PAYMENT-SIGNATURE
+   *   presence    — insecure dev override (header exists only)
+   */
+  A2MCP_PAYMENT_VERIFY_MODE: (() => {
+    const m = (process.env.A2MCP_PAYMENT_VERIFY_MODE || 'structural').trim().toLowerCase();
+    if (m === 'facilitator' || m === 'structural' || m === 'presence') {
+      return m as 'facilitator' | 'structural' | 'presence';
+    }
+    return 'structural' as const;
+  })(),
+
+  /** Optional x402 facilitator verify endpoint (e.g. CDP /v2/x402/verify). Empty = structural only. */
+  X402_FACILITATOR_VERIFY_URL: process.env.X402_FACILITATOR_VERIFY_URL || '',
+
+  /** ASP communication wallet shown in /api/status (defaults to A2MCP pay-to wallet). */
+  COMMUNICATION_ADDRESS:
+    process.env.COMMUNICATION_ADDRESS ||
+    process.env.A2MCP_PAY_TO_WALLET ||
+    '',
 
   /** Per-operation metered prices (USDT) for pay_per_call_utility delegates. */
   A2MCP_OPERATION_PRICES: {
