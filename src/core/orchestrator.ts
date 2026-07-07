@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { Task, SLAProposal, CounterProposal } from '../negotiation/schemas';
 import { NegotiationEngine } from '../negotiation/engine';
 import { SemanticMatcher } from '../discovery/matching';
@@ -6,6 +5,7 @@ import { ReputationScorer } from '../reputation/scorer';
 import { XLayerClient } from '../escrow/contract';
 import { ENV } from '../config/env';
 import { requiresLiveOkxSettlementPath } from '../onchainos/settlement';
+import { runReferenceTaskManagerEscrowPath } from '../reference/taskManagerEscrowPath';
 
 export class QuorixOrchestrator {
   private matcher: SemanticMatcher;
@@ -130,132 +130,26 @@ export class QuorixOrchestrator {
       return true;
     }
 
-    // Step 4: Poll reference TaskManager for client createTask (hackathon demo path only)
-    console.log(
-      `[Orchestrator] Waiting for client createTask on reference TaskManager ${ENV.ESCROW_CONTRACT_ADDRESS} (agent #${ENV.AGENT_ID})...`
-    );
-    this.updateJobStatus(taskId, 'WAITING_ESCROW');
-
-    const maxEscrowPollAttempts = ENV.MAX_POLL_ATTEMPTS;
-    let escrowConfirmed = false;
-    let lockedAmount = 0n;
-    const expectedPayment = BigInt(task.budgetWei);
-
-    for (let attempt = 1; attempt <= maxEscrowPollAttempts; attempt++) {
-      try {
-        const match = await this.blockchainClient.findClientEscrowTask(
-          task.clientAddress,
-          ENV.AGENT_ID,
-          expectedPayment
-        );
-        if (match && match.status >= 0) {
-          lockedAmount = match.payment;
-          this.activeJobs.get(taskId)!.onChainTaskId = match.taskId;
-          escrowConfirmed = true;
-          break;
-        }
-      } catch (err) {
-        console.warn(`[Orchestrator] Escrow poll query failed (attempt ${attempt}):`, err);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, ENV.POLL_INTERVAL_MS));
-    }
-
-    if (!escrowConfirmed) {
-      console.error(`[Orchestrator] Escrow deposit timeout: client failed to lock funds within window. Terminating task ${taskId}.`);
-      this.updateJobStatus(taskId, 'FAILED');
-      return false;
-    }
-
-    console.log(`[Orchestrator] Escrow Verified on X Layer. Locked Amount: ${lockedAmount.toString()} USDC (6 decimals). On-chain task #${this.activeJobs.get(taskId)!.onChainTaskId}.`);
-    this.updateJobStatus(taskId, 'ESCROW_LOCKED');
-
-    // Step 5: Execute Task & Generate Proof-of-Work
-    console.log(`[Orchestrator] Executing task deliverables...`);
-    this.updateJobStatus(taskId, 'EXECUTING');
-
-    try {
-      const deliverablePayload = JSON.stringify({
-        taskId,
-        title: task.title,
-        deliverables: finalProposal.deliverables,
-        completedAt: Math.floor(Date.now() / 1000),
-        escrowContract: ENV.ESCROW_CONTRACT_ADDRESS,
-      });
-      const proofHash = `0x${crypto.createHash('sha256').update(deliverablePayload).digest('hex')}`;
-      if (task.expectedProofHash) {
-        const expected = task.expectedProofHash.toLowerCase().trim();
-        const actual = proofHash.toLowerCase().trim();
-        if (expected !== actual) {
-          console.warn(`[Orchestrator] Generated proof hash does not match expectedProofHash for task ${taskId}.`);
-        }
-      }
-      console.log(`[Orchestrator] Deliverables executed. Generated Proof-of-Work hash: ${proofHash}`);
-      this.activeJobs.get(taskId)!.poW = proofHash;
-    } catch (err) {
-      console.error(`[Orchestrator] Deliverables execution failed:`, err);
-      this.updateJobStatus(taskId, 'FAILED');
-      return false;
-    }
-
-    // Step 6: Monitor Client Release or File Dispute
-    console.log(`[Orchestrator] Proof-of-work submitted to client. Monitoring native escrow release...`);
-    
-    // Poll to see if client approves the work and releases funds
-    const maxReleasePollAttempts = ENV.MAX_POLL_ATTEMPTS;
-    let paymentReleased = false;
-
-    const onChainTaskId = this.activeJobs.get(taskId)?.onChainTaskId;
-
-    for (let attempt = 1; attempt <= maxReleasePollAttempts; attempt++) {
-      try {
-        if (!onChainTaskId) break;
-        const escrow = await this.blockchainClient.getEscrowDetails(onChainTaskId);
-        if (escrow.status === 3 || escrow.status === 5) {
-          paymentReleased = true;
-          break;
-        }
-        if (escrow.status === 4) {
-          break;
-        }
-      } catch (err) {
-        console.warn(`[Orchestrator] Payout release poll query failed:`, err);
-      }
-      await new Promise(resolve => setTimeout(resolve, ENV.POLL_INTERVAL_MS));
-    }
-
-    // Step 7: Handle Arbitration or Complete Payout
-    if (paymentReleased) {
-      console.log(`[Orchestrator] Escrow payment released by client on X Layer. Task completed successfully.`);
-      this.updateJobStatus(taskId, 'COMPLETED');
-
-      // Submit Client rating on-chain via Onchain OS wallet toolcall
-      try {
-        console.log(`[Orchestrator] Submitting client agent rating to X Layer...`);
-        const ratingTx = await this.blockchainClient.submitRating(task.clientAddress, 5, "Excellent transaction. Smooth escrow lock and release.");
-        console.log(`[Orchestrator] Rating registered. Tx: ${ratingTx}`);
-      } catch (err) {
-        console.warn(`[Orchestrator] Failed to register client rating on-chain:`, err);
-      }
+    if (!ENV.REFERENCE_DEMO_ENABLED) {
+      console.log(
+        `[Orchestrator] Reference TaskManager demo disabled (REFERENCE_DEMO_ENABLED=false). Task ${taskId} stays at WAITING_ESCROW — use OKX.AI APIs.`
+      );
+      this.updateJobStatus(taskId, 'WAITING_ESCROW');
       return true;
-    } else {
-      // Trigger dispute filing (deposit 5% bounty) if client rejects or ignores the proof
-      console.warn(`[Orchestrator] Client rejected proof or payment release timed out. Initiating arbitration...`);
-      this.updateJobStatus(taskId, 'DISPUTED');
-
-      try {
-        console.log(`[Orchestrator] Filing dispute. Depositing 5% arbitration bounty using Onchain OS wallet...`);
-        const disputeTx = await this.blockchainClient.fileDispute(onChainTaskId || taskId);
-        console.log(`[Orchestrator] Dispute successfully registered on X Layer. Bounty locked. Tx: ${disputeTx}`);
-        
-        // Return true since dispute was safely escalated to arbitration
-        return true;
-      } catch (err) {
-        console.error(`[Orchestrator] Failed to escalate dispute:`, err);
-        this.updateJobStatus(taskId, 'FAILED');
-        return false;
-      }
     }
+
+    return runReferenceTaskManagerEscrowPath(task, finalProposal, this.blockchainClient, {
+      updateJobStatus: (id, status) => this.updateJobStatus(id, status),
+      setOnChainTaskId: (id, onChainTaskId) => {
+        const job = this.activeJobs.get(id);
+        if (job) job.onChainTaskId = onChainTaskId;
+      },
+      setPoW: (id, pow) => {
+        const job = this.activeJobs.get(id);
+        if (job) job.poW = pow;
+      },
+      getOnChainTaskId: (id) => this.activeJobs.get(id)?.onChainTaskId,
+    });
   }
 
   public getJobState(taskId: string) {

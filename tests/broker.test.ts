@@ -21,6 +21,7 @@ import {
 } from '../src/onchainos/settlement';
 import { portalUrlForJob, portalLinkHint } from '../src/onchainos/portalUrls';
 import { verifyPaymentAuthorization } from '../src/payments/verify';
+import { getA2mcpPaymentReadiness } from '../src/config/paymentReadiness';
 
 async function runTests() {
   console.log('====================================================');
@@ -143,6 +144,11 @@ async function runTests() {
       decoded.accepts[0].amount === '5000',
       '0.005 USDT encodes to 5000 atomic units (6 decimals)'
     );
+    assert(
+      challenge.body.billingTier === 'in_development',
+      'x402 challenge exposes billingTier in_development'
+    );
+    assert(challenge.body.externallyBillable === false, 'x402 challenge marks externallyBillable false');
 
     const headersV2 = { 'payment-signature': 'signed-proof-base64' };
     const auth = extractPaymentAuthorization(headersV2);
@@ -185,6 +191,11 @@ async function runTests() {
       { payTo, amountAtomic: '5000', operation: 'reputation_audit' }
     );
     assert(replay.ok === false, 'Structural verify rejects signature replay');
+
+    const readiness = getA2mcpPaymentReadiness();
+    assert(readiness.tier === 'in_development', 'Structural mode reports in_development billing tier');
+    assert(readiness.externallyBillable === false, 'Structural mode is not externally billable');
+    assert(readiness.disclaimer.includes('IN DEVELOPMENT'), 'Billing disclaimer is honest');
 
     assert(
       portalUrlForJob('394079') === 'https://www.okx.ai/tasks/394079',

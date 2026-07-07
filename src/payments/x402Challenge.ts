@@ -1,4 +1,5 @@
 import { ENV } from '../config/env';
+import { getA2mcpPaymentReadiness } from '../config/paymentReadiness';
 
 /** X Layer mainnet — CAIP-2 network id for x402 v2 accepts entries. */
 export const X_LAYER_CAIP2 = 'eip155:196';
@@ -30,6 +31,8 @@ export interface X402Challenge {
     hint: string;
     verificationGap: string;
     verifyMode: string;
+    billingTier: string;
+    externallyBillable: boolean;
   };
 }
 
@@ -131,6 +134,7 @@ export function buildPayPerCallChallenge(options: X402ChallengeOptions): X402Cha
   };
 
   const paymentRequiredHeader = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64');
+  const readiness = getA2mcpPaymentReadiness();
 
   return {
     x402Version: 2,
@@ -143,11 +147,10 @@ export function buildPayPerCallChallenge(options: X402ChallengeOptions): X402Cha
       operation,
       hint:
         'Sign with onchainos payment pay --payload <PAYMENT-REQUIRED value>, then replay POST /api/mcp/invoke with PAYMENT-SIGNATURE.',
-      verificationGap:
-        ENV.A2MCP_PAYMENT_VERIFY_MODE === 'facilitator'
-          ? 'Facilitator verify enabled when X402_FACILITATOR_VERIFY_URL is configured.'
-          : 'Beta: structural verify (payTo/amount/replay). Set A2MCP_PAYMENT_VERIFY_MODE=facilitator + X402_FACILITATOR_VERIFY_URL for production settlement verify.',
+      verificationGap: readiness.disclaimer,
       verifyMode: ENV.A2MCP_PAYMENT_VERIFY_MODE,
+      billingTier: readiness.tier,
+      externallyBillable: readiness.externallyBillable,
     },
   };
 }

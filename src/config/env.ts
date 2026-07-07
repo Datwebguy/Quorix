@@ -90,6 +90,17 @@ export const ENV = {
     process.env.A2MCP_PAY_TO_WALLET ||
     '',
 
+  /**
+   * Enable hackathon reference TaskManager demo paths (orchestrator poll, on-chain scanner).
+   * Defaults false in production — live OKX.AI jobs never need this.
+   */
+  REFERENCE_DEMO_ENABLED: (() => {
+    if (process.env.REFERENCE_DEMO_ENABLED !== undefined) {
+      return process.env.REFERENCE_DEMO_ENABLED === 'true';
+    }
+    return process.env.NODE_ENV !== 'production';
+  })(),
+
   /** Per-operation metered prices (USDT) for pay_per_call_utility delegates. */
   A2MCP_OPERATION_PRICES: {
     reputation_audit: process.env.A2MCP_PRICE_REPUTATION_AUDIT || '0.005',

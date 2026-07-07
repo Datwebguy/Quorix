@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck and build
+        run: npm run build
+
+      - name: Run integration tests
+        run: npm test
+        env:
+          ESCROW_CONTRACT_ADDRESS: '0x5FbDB2315678afecb367f032d93F642f64180aa3'
+          RATING_CONTRACT_ADDRESS: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512'
+          A2MCP_PAY_TO_WALLET: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+          A2MCP_X402_ENABLED: 'true'
+          A2MCP_CALL_PRICE_USDT: '0.005'

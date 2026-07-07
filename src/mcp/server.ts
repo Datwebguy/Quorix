@@ -27,6 +27,7 @@ import type { PaymentAuthorization } from '../payments/authorization';
 import type { PaymentVerifyResult } from '../payments/verify';
 import { verificationLevelLabel } from '../payments/verify';
 import { ENV } from '../config/env';
+import { getA2mcpPaymentReadiness } from '../config/paymentReadiness';
 import {
   fetchLiveOkxEscrowSnapshot,
   isReferenceTaskManagerId,
@@ -544,6 +545,7 @@ export class QuorixMcpServer {
     if (!inner.ok) return inner;
 
     const verifyLabel = verification ? verificationLevelLabel(verification) : 'not_verified';
+    const readiness = getA2mcpPaymentReadiness();
 
     return buildAgentSuccess(tool, {
       operation,
@@ -555,7 +557,9 @@ export class QuorixMcpServer {
         verifyMode: verification?.mode || ENV.A2MCP_PAYMENT_VERIFY_MODE,
         verifyLevel: verification?.level || 'beta',
         verification: verifyLabel,
-        verifyNote: verification?.reason,
+        billingTier: readiness.tier,
+        externallyBillable: readiness.externallyBillable,
+        verifyNote: verification?.reason || readiness.disclaimer,
         payer: verification?.payer,
       },
       result: inner.data,

@@ -16,6 +16,7 @@ import { QUORIX_MCP_TOOL_META, buildMcpToolDefinitions } from './mcp/tools';
 import { buildQuorixMcpManifest } from './mcp/okxIntegration';
 import { parseLegacyPayload } from './mcp/responses';
 import { ENV } from './config/env';
+import { getA2mcpPaymentReadiness } from './config/paymentReadiness';
 import {
   extractPaymentAuthorization,
   hasPaymentAuthorization,
@@ -361,6 +362,8 @@ async function main() {
         .length,
       mcpToolsTotal: QUORIX_MCP_TOOL_META.length,
       a2mcpPaymentVerifyMode: ENV.A2MCP_PAYMENT_VERIFY_MODE,
+      referenceDemoEnabled: ENV.REFERENCE_DEMO_ENABLED,
+      a2mcpBilling: getA2mcpPaymentReadiness(),
       mcpManifest: '/api/mcp/manifest',
       mcpInvoke: '/api/mcp/invoke',
       okxIntegration: buildQuorixMcpManifest(
