@@ -5,6 +5,7 @@ import { SemanticMatcher } from '../discovery/matching';
 import { ReputationScorer } from '../reputation/scorer';
 import { XLayerClient } from '../escrow/contract';
 import { ENV } from '../config/env';
+import { requiresLiveOkxSettlementPath } from '../onchainos/settlement';
 
 export class QuorixOrchestrator {
   private matcher: SemanticMatcher;
@@ -117,8 +118,22 @@ export class QuorixOrchestrator {
     this.activeJobs.get(taskId)!.proposal = finalProposal;
     console.log(`[Orchestrator] SLA proposal offered to client. Price: ${finalProposal.priceWei} Wei. Days: ${finalProposal.timelineDays}`);
 
-    // Step 4: Poll TaskManager for client createTask (USDC locked at Created state)
-    console.log(`[Orchestrator] Waiting for client createTask on TaskManager ${ENV.ESCROW_CONTRACT_ADDRESS} (agent #${ENV.AGENT_ID})...`);
+    // Live OKX.AI marketplace jobs settle via OKX backend (contact-user / confirm-accept) — not reference TaskManager.
+    if (requiresLiveOkxSettlementPath(taskId)) {
+      console.log(
+        `[Orchestrator] Task ${taskId} is a live OKX.AI marketplace job — skipping reference TaskManager escrow polling.`
+      );
+      console.log(
+        `[Orchestrator] Use dashboard "Contact Client on OKX.AI" and OKX.AI status APIs for escrow lifecycle.`
+      );
+      this.updateJobStatus(taskId, 'WAITING_ESCROW');
+      return true;
+    }
+
+    // Step 4: Poll reference TaskManager for client createTask (hackathon demo path only)
+    console.log(
+      `[Orchestrator] Waiting for client createTask on reference TaskManager ${ENV.ESCROW_CONTRACT_ADDRESS} (agent #${ENV.AGENT_ID})...`
+    );
     this.updateJobStatus(taskId, 'WAITING_ESCROW');
 
     const maxEscrowPollAttempts = ENV.MAX_POLL_ATTEMPTS;

@@ -9,7 +9,8 @@
  * 2. Register ASP identity: `onchainos agent create --role asp`
  * 3. Add A2MCP services with endpoints from buildOkxServiceManifest().
  * 4. Activate ASP listing so buyer agents can discover via `onchainos agent search`.
- * 5. Buyer agents call POST /api/mcp/invoke with tool + arguments (x402 billing when enabled).
+ * 5. Buyer agents call POST /api/mcp/invoke with tool + arguments.
+ *    pay_per_call_utility returns HTTP 402 + PAYMENT-REQUIRED until buyer replays with PAYMENT-SIGNATURE.
  *
  * MCP stdio transport is for local agent runtimes (Cursor, Claude Desktop).
  * HTTP bridge (/api/mcp/*) is for OKX.AI platform and remote agent callers.
@@ -91,8 +92,17 @@ export function buildOkxServiceTemplates(baseUrl?: string): OkxA2mcpServiceTempl
     {
       serviceName: 'Quorix Escrow Monitor',
       serviceDescription:
-        'Read escrow lock status for a task on X Layer TaskManager.\n' +
-        'User provides: 1. task ID (uint256 decimal from TaskManager)',
+        'Read escrow / settlement status for an OKX.AI marketplace job or reference TaskManager task.\n' +
+        'User provides: 1. task ID (hex jobId or decimal reference taskId)',
+      serviceType: 'A2MCP',
+      fee: '0.005',
+      endpoint: invokeEndpoint,
+    },
+    {
+      serviceName: 'Quorix Metered Utility (x402)',
+      serviceDescription:
+        'Pay-per-call x402 gateway delegating to reputation_audit, escrow_check, or task_match.\n' +
+        'User provides: 1. operation name 2. PAYMENT-SIGNATURE header from onchainos payment pay',
       serviceType: 'A2MCP',
       fee: '0.005',
       endpoint: invokeEndpoint,

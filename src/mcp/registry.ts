@@ -80,13 +80,13 @@ export const QUORIX_MCP_TOOLS: QuorixMcpToolDefinition[] = [
     status: 'live',
     category: 'Escrow Monitor',
     provider: 'X Layer TaskManager',
-    summary: 'Read on-chain escrow lock state for a task ID.',
+    summary: 'Read escrow / settlement state for a task ID.',
     description:
-      'Queries the OKX.AI TaskManager contract for escrow details: client, agentId, USDC payment (6 decimals), status (Created/InProgress/Completed/Approved/Disputed/Resolved/Cancelled), and time in current state. Essential for monitoring payment milestones in A2A deals.',
+      'Routes by taskId format: OKX.AI marketplace hex/numeric jobIds use live `onchainos agent status` (production path). Decimal uint256 IDs query the reference TaskManager contract (hackathon demo only). Returns settlement path, status, payment amount, and ASP next-step guidance.',
     whenToUse: 'Call after a deal is filed or when tracking whether funds are locked, released, or disputed.',
     agentHints: [
-      'Input: taskId (required) — on-chain uint256 decimal (e.g. "0", "1").',
-      'Status Created means USDC is escrowed and work can proceed.',
+      'Input: taskId (required) — OKX.AI hex jobId (0x…) or reference TaskManager decimal uint256.',
+      'Live marketplace jobs return settlementPath: okx-cli-live.',
       'Pair with verify_task_proof after deliverable submission.',
     ],
     example: { taskId: '0' },
@@ -97,7 +97,7 @@ export const QUORIX_MCP_TOOLS: QuorixMcpToolDefinition[] = [
       properties: {
         taskId: {
           type: 'string',
-          description: 'On-chain TaskManager task ID as decimal uint256 string.',
+          description: 'OKX.AI hex jobId (0x…) or reference TaskManager decimal uint256 string.',
         },
       },
       required: ['taskId'],
@@ -218,12 +218,13 @@ export const QUORIX_MCP_TOOLS: QuorixMcpToolDefinition[] = [
     provider: 'x402 Payment Channel',
     summary: 'x402-gated micro-execution endpoint for metered A2MCP billing.',
     description:
-      'Reserved for x402 payment-channel billing on OKX.AI. Requires an active x402 authorization or payment channel before execution. Returns payment_required until wired to the OKX payment protocol.',
-    whenToUse: 'Call only when integrating x402 metered billing — not for standard tool execution.',
+      'OKX Agent Payments Protocol metered billing on QuorixASP. Unpaid POST /api/mcp/invoke returns HTTP 402 with PAYMENT-REQUIRED (x402 v2). Buyer signs via onchainos payment pay, replays with PAYMENT-SIGNATURE, and receives the delegated operation result (reputation_audit, escrow_check, or task_match).',
+    whenToUse: 'Call when integrating OKX.AI A2MCP pay-per-call billing — not for free demo tool execution.',
     agentHints: [
-      'Requires x402 payment channel via OKX.AI A2MCP transport.',
-      'Use the five live tools directly for hackathon/demo flows.',
-      'operation identifies the billable action (e.g. reputation_audit).',
+      'First call without PAYMENT-SIGNATURE → HTTP 402 + PAYMENT-REQUIRED header.',
+      'Sign: onchainos payment pay --payload <base64 PAYMENT-REQUIRED>.',
+      'Replay POST /api/mcp/invoke with PAYMENT-SIGNATURE and tool arguments.',
+      'Settlement currencies: USDT (and USDG when configured).',
     ],
     example: { operation: 'reputation_audit' },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
@@ -235,6 +236,23 @@ export const QUORIX_MCP_TOOLS: QuorixMcpToolDefinition[] = [
           type: 'string',
           description: 'Billable operation identifier.',
           enum: ['reputation_audit', 'escrow_check', 'task_match'],
+        },
+        agentAddress: {
+          type: 'string',
+          description: 'Required when operation=reputation_audit — counterparty wallet to audit.',
+          pattern: '^0x[a-fA-F0-9]{40}$',
+        },
+        taskId: {
+          type: 'string',
+          description: 'Required when operation=escrow_check — OKX.AI jobId or reference task ID.',
+        },
+        minScore: {
+          type: 'number',
+          description: 'Optional when operation=task_match — minimum match score 0–100.',
+        },
+        limit: {
+          type: 'number',
+          description: 'Optional when operation=task_match — max tasks to return.',
         },
       },
       required: ['operation'],

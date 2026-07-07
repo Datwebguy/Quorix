@@ -18,8 +18,15 @@ export const ENV = {
   // X Layer RPC node (defaults to X Layer Mainnet RPC)
   X_LAYER_RPC_URL: process.env.X_LAYER_RPC_URL || 'https://rpc.xlayer.tech',
 
-  // USDC on X Layer (6 decimals) — used by TaskManager.createTask transferFrom
+  // USDC on X Layer (6 decimals) — used by reference TaskManager.createTask transferFrom
   USDC_TOKEN_ADDRESS: process.env.USDC_TOKEN_ADDRESS || '0x74b7F16337b8972027F6196A17a631aC6dE26d22',
+
+  // USDT on X Layer (6 decimals) — primary A2MCP / x402 settlement currency on OKX.AI
+  USDT_TOKEN_ADDRESS:
+    process.env.USDT_TOKEN_ADDRESS || '0x1E4a5963aBFD975d8c9021ce480b42188849D41d',
+
+  // Optional USDG on X Layer for x402 accepts[] (second settlement currency)
+  USDG_TOKEN_ADDRESS: process.env.USDG_TOKEN_ADDRESS || '',
 
   // QuorixASP registered agent ID on AgentRegistry (required for createTask)
   AGENT_ID: BigInt(process.env.AGENT_ID || '3827'),
@@ -42,8 +49,31 @@ export const ENV = {
   MIN_REPUTATION_SCORE: parseFloat(process.env.MIN_REPUTATION_SCORE || '3.0'), // 1.0 to 5.0 scale
   MAX_DISPUTE_RATE: parseFloat(process.env.MAX_DISPUTE_RATE || '0.20'), // Max 20% dispute rate tolerated
   
-  // A2MCP Micro-Service Pricing
+  /**
+   * A2MCP metered call price (USDT) — governs x402 PAYMENT-REQUIRED on pay_per_call_utility.
+   * Distinct from A2A_SERVICE_FEE_USDT (registered ASP listing / negotiated work).
+   */
+  A2MCP_CALL_PRICE_USDT: process.env.A2MCP_CALL_PRICE_USDT || process.env.A2MCP_CALL_PRICE_OKB || '0.005',
+
+  /** @deprecated Alias — use A2MCP_CALL_PRICE_USDT. Kept for backward-compatible .env files. */
   A2MCP_CALL_PRICE_OKB: process.env.A2MCP_CALL_PRICE_OKB || '0.005',
+
+  /** ASP wallet receiving metered x402 payments (required when A2MCP_X402_ENABLED=true). */
+  A2MCP_PAY_TO_WALLET: process.env.A2MCP_PAY_TO_WALLET || '',
+
+  /** Gate pay_per_call_utility behind HTTP 402 + PAYMENT-SIGNATURE (default: true when pay-to wallet set). */
+  A2MCP_X402_ENABLED:
+    process.env.A2MCP_X402_ENABLED !== undefined
+      ? process.env.A2MCP_X402_ENABLED === 'true'
+      : Boolean((process.env.A2MCP_PAY_TO_WALLET || '').trim()),
+
+  /** Per-operation metered prices (USDT) for pay_per_call_utility delegates. */
+  A2MCP_OPERATION_PRICES: {
+    reputation_audit: process.env.A2MCP_PRICE_REPUTATION_AUDIT || '0.005',
+    escrow_check: process.env.A2MCP_PRICE_ESCROW_CHECK || '0.005',
+    task_match: process.env.A2MCP_PRICE_TASK_MATCH || '0.005',
+    metered_call: process.env.A2MCP_CALL_PRICE_USDT || process.env.A2MCP_CALL_PRICE_OKB || '0.005',
+  } as Record<string, string>,
   
   // Server port
   PORT: parseInt(process.env.PORT || '3001', 10),

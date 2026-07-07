@@ -18,8 +18,8 @@ Built for the **OKX AI Genesis Hackathon** (2026). This repository is the broker
 | **Capability matching** | Scores tasks against keywords relevant to ASP brokerage in `SemanticMatcher` (SLA, marketplace, negotiation, etc.) |
 | **SLA negotiation** | `NegotiationEngine` accepts, counters, or declines proposals by budget and timeline rules |
 | **Reputation auditing** | Reads X Layer event logs via `ReputationScorer` (X402Rating / TaskManager history) for trust signals |
-| **Escrow monitoring** | Reads TaskManager contract state via **viem**; can submit writes through **Onchain OS CLI** (`wallet contract-call`) without holding private keys locally |
-| **A2MCP tools** | HTTP JSON-RPC MCP surface (`/api/mcp/*`) with six registered tools (reputation, escrow, negotiation, marketplace match, proof verify, utility) |
+| **Escrow monitoring** | **Live path:** `onchainos agent status` for OKX.AI marketplace jobIds. **Reference path:** viem reads on hackathon TaskManager `0x599e…E01D` (demo only) |
+| **A2MCP tools** | HTTP JSON-RPC MCP surface (`/api/mcp/*`) with six registered tools; `pay_per_call_utility` gates via **OKX Agent Payments Protocol** (HTTP 402 + `PAYMENT-REQUIRED`) |
 | **Operator console** | `dashboard.html` — task feed, negotiation panel, reputation audit, optional developer MCP invoke UI |
 | **Admin log stream** | `admin.html` — gated behind `ADMIN_PASSWORD`, separate from the operator login flow |
 
@@ -44,6 +44,24 @@ onchainos agent recommend-task --agent-id <AGENT_ID>
 
 The reference on chain scanner remains in `src/discovery/marketplaceReference.ts` as a **hackathon competency demo** only. The dashboard task feed and MCP `match_market_tasks` tool use the CLI based path in `src/discovery/marketplace.ts`.
 
+### Payment / escrow path audit
+
+| Module | Classification | Notes |
+|--------|----------------|-------|
+| `src/discovery/marketplace.ts` | **(a) live/production** | `task-search` / `recommend-task` via Onchain OS CLI |
+| `src/onchainos/taskLifecycle.ts` | **(a) live/production** | `contact-user`, `agent status` for marketplace negotiate + escrow lifecycle |
+| `src/onchainos/settlement.ts` | **(a) live/production** | Maps live OKX status → unified escrow snapshot |
+| `src/payments/x402Challenge.ts` | **(a) live/production** | x402 v2 `PAYMENT-REQUIRED` for `pay_per_call_utility` |
+| `src/mcp/server.ts` (`pay_per_call_utility`) | **(a) live/production** | Delegates to reputation / escrow / match after `PAYMENT-SIGNATURE` |
+| `src/escrow/contract.ts` (viem reads + CLI writes) | **(b) hackathon reference** | TaskManager `0x599e…E01D` — zero real marketplace volume |
+| `src/discovery/marketplaceReference.ts` | **(b) hackathon reference** | On-chain log scanner for demo contract only |
+| `src/core/orchestrator.ts` (TaskManager poll loop) | **(b) reference only** | Skips reference polling when taskId is a live OKX marketplace jobId |
+| Facilitator verify on replay | **(c) gap / honest** | QuorixASP gates on header presence; server-side settlement verify not yet wired |
+
+**A2A escrow (negotiated work):** Publisher funds via OKX.AI (`confirm-accept`, `set-payment-mode`, `complete`) — not QuorixASP's reference `createTask`.
+
+**A2MCP (pay-per-call):** `POST /api/mcp/invoke` with `tool: pay_per_call_utility` → HTTP 402 → buyer signs `onchainos payment pay` → replay with `PAYMENT-SIGNATURE`.
+
 ---
 
 ## Architecture
@@ -62,7 +80,12 @@ QuorixASP/
 │   │   └── matching.ts             # Semantic keyword scorer for ASP capabilities
 │   ├── onchainos/
 │   │   ├── exec.ts                 # execFile only CLI spawn + isolated ONCHAINOS_HOME
+│   │   ├── taskLifecycle.ts        # contact-user, agent status (live marketplace)
+│   │   ├── settlement.ts           # Live OKX escrow reads vs reference TaskManager
 │   │   └── taskMarketplace.ts      # task-search, recommend-task, agent ID resolution
+│   ├── payments/
+│   │   ├── x402Challenge.ts        # PAYMENT-REQUIRED builder (x402 v2)
+│   │   └── authorization.ts        # PAYMENT-SIGNATURE / X-PAYMENT extraction
 │   ├── negotiation/
 │   │   ├── engine.ts               # SLA accept / counter / decline rules
 │   │   └── schemas.ts              # Task and proposal types (Zod)
@@ -206,10 +229,15 @@ Copy `.env.example` → `.env`. Every variable:
 | `BROKER_FEE_BPS` | Broker fee basis points for SLA calculations (default `100` = 1%) |
 | `MIN_REPUTATION_SCORE` | Minimum reputation score to accept a counterparty |
 | `MAX_DISPUTE_RATE` | Maximum tolerated dispute rate (0–1 fraction) |
-| `A2MCP_CALL_PRICE_OKB` | **Legacy / unused in runtime code.** Loaded in `env.ts` but not referenced elsewhere. Reserved for future x402 metered billing on `pay_per_call_utility`. **Not** your ASP listing fee. |
+| `A2MCP_CALL_PRICE_USDT` | Metered x402 price per `pay_per_call_utility` call (default `0.005` USDT). Governs `PAYMENT-REQUIRED` accepts[]. |
+| `A2MCP_CALL_PRICE_OKB` | Legacy alias for `A2MCP_CALL_PRICE_USDT` — same value, kept for older `.env` files. |
+| `A2MCP_PAY_TO_WALLET` | ASP wallet receiving metered x402 payments on X Layer. Required when `A2MCP_X402_ENABLED=true`. |
+| `A2MCP_X402_ENABLED` | Gate `pay_per_call_utility` behind HTTP 402 (default: `true` when `A2MCP_PAY_TO_WALLET` is set). |
+| `USDT_TOKEN_ADDRESS` | USDT on X Layer for x402 accepts[] (default mainnet USDT). |
+| `USDG_TOKEN_ADDRESS` | Optional second settlement currency in x402 accepts[]. |
 | `A2A_SERVICE_FEE_USDT` | Registered A2A service fee shown in the UI (default `0.5` USDT). Set this to match your OKX.AI listing. |
 
-**Fee clarification:** QuorixASP's registered ASP brokerage service is priced at **0.5 USDT** per the OKX.AI listing. Per tool suggested fees in the MCP registry (e.g. `0.005` USDT for reputation audit) are documentation defaults in `src/mcp/registry.ts`, separate from `A2MCP_CALL_PRICE_OKB`.
+**Fee clarification:** `A2A_SERVICE_FEE_USDT` is your **negotiated-work ASP listing** on OKX.AI. `A2MCP_CALL_PRICE_USDT` is the **metered per-call** price for `pay_per_call_utility` via x402 — a separate billing mode.
 
 ---
 
@@ -222,7 +250,7 @@ Copy `.env.example` → `.env`. Every variable:
 | `verify_task_proof` | Compare deliverable hash against agreed proof reference |
 | `evaluate_deal_proposal` | SLA engine: accept / counter / decline |
 | `match_market_tasks` | CLI based marketplace discovery with capability scores |
-| `pay_per_call_utility` | Metered utility endpoint (requires x402 payment; not wired for demo use) |
+| `pay_per_call_utility` | x402-gated metered billing — delegates to reputation_audit / escrow_check / task_match after `PAYMENT-SIGNATURE` |
 
 Manifest: `GET /api/mcp/manifest`
 

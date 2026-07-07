@@ -23,10 +23,22 @@ import {
   classifyExecutionError,
   serializeAgentResponse,
 } from './responses';
+import type { PaymentAuthorization } from '../payments/authorization';
+import { ENV } from '../config/env';
+import {
+  fetchLiveOkxEscrowSnapshot,
+  isReferenceTaskManagerId,
+  requiresLiveOkxSettlementPath,
+  snapshotFromReferenceEscrow,
+} from '../onchainos/settlement';
 
 export interface McpToolResult {
   isError: boolean;
   content: Array<{ type: 'text'; text: string }>;
+}
+
+export interface McpInvokeOptions {
+  paymentAuthorization?: PaymentAuthorization | null;
 }
 
 export class QuorixMcpServer {
@@ -109,7 +121,8 @@ export class QuorixMcpServer {
   public async invokeTool(
     name: string,
     args: Record<string, unknown> = {},
-    callerId = 'http-client'
+    callerId = 'http-client',
+    options: McpInvokeOptions = {}
   ): Promise<McpToolResult> {
     if (!getToolByName(name)) {
       return this.toMcpResult(
@@ -128,10 +141,14 @@ export class QuorixMcpServer {
       );
     }
 
-    return this.executeTool(name, args);
+    return this.executeTool(name, args, options);
   }
 
-  private async executeTool(name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+  private async executeTool(
+    name: string,
+    args: Record<string, unknown>,
+    options: McpInvokeOptions = {}
+  ): Promise<McpToolResult> {
     try {
       switch (name) {
         case 'check_agent_reputation':
@@ -150,7 +167,7 @@ export class QuorixMcpServer {
           return this.toMcpResult(await this.handleMatchTasks(args));
 
         case 'pay_per_call_utility':
-          return this.toMcpResult(this.handlePayPerCall(args));
+          return this.toMcpResult(await this.handlePayPerCall(args, options));
 
         default:
           return this.toMcpResult(
@@ -237,9 +254,50 @@ export class QuorixMcpServer {
       });
     }
 
+    if (requiresLiveOkxSettlementPath(taskId)) {
+      const session = await this.resolveMarketplaceSession();
+      if (!session) {
+        return buildAgentError(
+          tool,
+          'MISSING_ARGUMENT',
+          'Live OKX.AI job status requires an authenticated broker CLI session.',
+          {
+            hint:
+              'Log in via the dashboard and set ONCHAINOS_CLI_SESSION, or pass a reference TaskManager decimal taskId.',
+            retryable: true,
+          }
+        );
+      }
+
+      const live = await fetchLiveOkxEscrowSnapshot(session, taskId);
+      return buildAgentSuccess(tool, {
+        taskId: live.taskId,
+        settlementPath: live.settlementPath,
+        client: live.client || null,
+        agentId: live.agentId || null,
+        paymentUsdc: live.paymentAtomic || '0',
+        paymentUsdcFormatted: live.paymentFormatted || null,
+        tokenSymbol: live.tokenSymbol || null,
+        description: live.description || null,
+        status: live.status,
+        statusLabel: live.statusLabel,
+        okxStatusCode: live.okxStatusCode ?? null,
+        portalUrl: live.portalUrl || null,
+        aspNextStep: live.aspNextStep || null,
+        nextAction: live.aspNextStep || 'Check this job on OKX.AI for the latest marketplace status.',
+      });
+    }
+
+    if (!isReferenceTaskManagerId(taskId)) {
+      return buildAgentError(tool, 'INVALID_ARGUMENT', 'Unrecognized taskId format.', {
+        hint:
+          'Use a decimal uint256 for the reference TaskManager, or an OKX.AI hex/numeric jobId for live marketplace tasks.',
+        field: 'taskId',
+      });
+    }
+
     const escrow = await this.blockchainClient.getEscrowDetails(taskId);
-    const statusMap = ['created', 'in_progress', 'completed', 'approved', 'disputed', 'resolved', 'cancelled'];
-    const status = escrow.status >= 0 ? statusMap[escrow.status] || 'unknown' : 'not_found';
+    const unified = snapshotFromReferenceEscrow(escrow);
     const timeInStateSec = await this.blockchainClient.getEscrowTimeInCurrentState(
       taskId,
       escrow.status,
@@ -247,21 +305,22 @@ export class QuorixMcpServer {
     );
 
     return buildAgentSuccess(tool, {
-      taskId: escrow.taskId,
-      client: escrow.client,
-      agentId: escrow.agentId.toString(),
-      paymentUsdc: escrow.payment.toString(),
-      paymentUsdcFormatted: (Number(escrow.payment) / 1e6).toFixed(6),
-      description: escrow.description,
-      status,
-      statusLabel: status.replace('_', ' '),
+      taskId: unified.taskId,
+      settlementPath: unified.settlementPath,
+      client: unified.client,
+      agentId: unified.agentId,
+      paymentUsdc: unified.paymentAtomic,
+      paymentUsdcFormatted: unified.paymentFormatted,
+      description: unified.description,
+      status: unified.status,
+      statusLabel: unified.statusLabel,
       timeInCurrentStateSeconds: timeInStateSec,
       timeInCurrentStateMinutes: Math.floor(timeInStateSec / 60),
       resultHash: escrow.resultHash || null,
       nextAction:
-        status === 'created' || status === 'in_progress'
-          ? 'Monitor for proof submission or completion.'
-          : status === 'disputed'
+        unified.status === 'created' || unified.status === 'in_progress'
+          ? 'Monitor for proof submission or completion (reference TaskManager demo path).'
+          : unified.status === 'disputed'
             ? 'Escalate to evaluator agent.'
             : 'No immediate action required.',
     });
@@ -389,14 +448,90 @@ export class QuorixMcpServer {
     });
   }
 
-  private handlePayPerCall(args: Record<string, unknown>): AgentToolResponse {
+  private async handlePayPerCall(
+    args: Record<string, unknown>,
+    options: McpInvokeOptions
+  ): Promise<AgentToolResponse> {
     const tool = 'pay_per_call_utility';
     const operation = this.sanitizeInput(String(args?.operation || ''), 50);
 
-    return buildAgentError(tool, 'PAYMENT_REQUIRED', 'x402 payment authorization required.', {
-      hint:
-        'Connect via OKX.AI A2MCP with an active x402 payment channel. For hackathon demos, use the five live tools directly.',
-      retryable: false,
+    if (!operation) {
+      return buildAgentError(tool, 'MISSING_ARGUMENT', 'operation is required.', {
+        hint: 'Choose reputation_audit, escrow_check, or task_match.',
+        field: 'operation',
+      });
+    }
+
+    const allowed = new Set(['reputation_audit', 'escrow_check', 'task_match']);
+    if (!allowed.has(operation)) {
+      return buildAgentError(tool, 'INVALID_ARGUMENT', `Unknown operation "${operation}".`, {
+        hint: 'Supported: reputation_audit, escrow_check, task_match.',
+        field: 'operation',
+      });
+    }
+
+    if (ENV.A2MCP_X402_ENABLED && !options.paymentAuthorization) {
+      return buildAgentError(tool, 'PAYMENT_REQUIRED', 'x402 payment authorization required.', {
+        hint:
+          'POST /api/mcp/invoke without PAYMENT-SIGNATURE returns HTTP 402 + PAYMENT-REQUIRED. Sign via onchainos payment pay, then replay with the authorization header.',
+        retryable: true,
+      });
+    }
+
+    switch (operation) {
+      case 'reputation_audit': {
+        const agentAddress = String(args?.agentAddress || '').trim();
+        if (!agentAddress) {
+          return buildAgentError(tool, 'MISSING_ARGUMENT', 'agentAddress is required for reputation_audit.', {
+            hint: 'Pass the buyer/counterparty wallet as 0x + 40 hex characters.',
+            field: 'agentAddress',
+          });
+        }
+        const inner = await this.handleCheckReputation({ agentAddress });
+        return this.wrapMeteredDelegate(tool, operation, inner, options.paymentAuthorization);
+      }
+      case 'escrow_check': {
+        const taskId = String(args?.taskId || '').trim();
+        if (!taskId) {
+          return buildAgentError(tool, 'MISSING_ARGUMENT', 'taskId is required for escrow_check.', {
+            hint: 'Pass an OKX.AI hex jobId or a reference TaskManager decimal taskId.',
+            field: 'taskId',
+          });
+        }
+        const inner = await this.handleCheckEscrow({ taskId });
+        return this.wrapMeteredDelegate(tool, operation, inner, options.paymentAuthorization);
+      }
+      case 'task_match': {
+        const inner = await this.handleMatchTasks({
+          minScore: args?.minScore,
+          limit: args?.limit,
+        });
+        return this.wrapMeteredDelegate(tool, operation, inner, options.paymentAuthorization);
+      }
+      default:
+        return buildAgentError(tool, 'INVALID_ARGUMENT', `Unsupported operation "${operation}".`);
+    }
+  }
+
+  private wrapMeteredDelegate(
+    tool: string,
+    operation: string,
+    inner: AgentToolResponse,
+    payment?: PaymentAuthorization | null
+  ): AgentToolResponse {
+    if (!inner.ok) return inner;
+
+    return buildAgentSuccess(tool, {
+      operation,
+      billing: {
+        scheme: 'x402',
+        settlementCurrencies: ['USDT', ...(ENV.USDG_TOKEN_ADDRESS ? ['USDG'] : [])],
+        priceUsdt: ENV.A2MCP_OPERATION_PRICES[operation] || ENV.A2MCP_CALL_PRICE_USDT,
+        paymentHeader: payment?.headerName || null,
+        verification:
+          'header_presence_only — facilitator verify not yet wired server-side in QuorixASP',
+      },
+      result: inner.data,
     });
   }
 

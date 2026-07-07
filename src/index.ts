@@ -16,6 +16,11 @@ import { QUORIX_MCP_TOOL_META, buildMcpToolDefinitions } from './mcp/tools';
 import { buildQuorixMcpManifest } from './mcp/okxIntegration';
 import { parseLegacyPayload } from './mcp/responses';
 import { ENV } from './config/env';
+import {
+  extractPaymentAuthorization,
+  hasPaymentAuthorization,
+} from './payments/authorization';
+import { buildPayPerCallChallenge } from './payments/x402Challenge';
 import { shortenRpcError } from './blockchain/rpcTransport';
 import { logErrorOnce } from './utils/logDedupe';
 import express from 'express';
@@ -706,7 +711,34 @@ async function main() {
         req.headers['x-agent-address'] || req.body?.callerAddress || req.ip || 'http-client'
       ).toLowerCase();
 
-      const result = await mcpServer.invokeTool(tool, toolArgs || {}, callerId);
+      const paymentAuthorization = extractPaymentAuthorization(req.headers);
+
+      if (tool === 'pay_per_call_utility' && ENV.A2MCP_X402_ENABLED && !hasPaymentAuthorization(req.headers)) {
+        try {
+          const operation = String(toolArgs?.operation || 'metered_call');
+          const baseUrl =
+            process.env.PUBLIC_BASE_URL ||
+            process.env.QUORIX_PUBLIC_URL ||
+            `http://localhost:${ENV.PORT}`;
+          const challenge = buildPayPerCallChallenge({ baseUrl, operation });
+          res.setHeader('PAYMENT-REQUIRED', challenge.paymentRequiredHeader);
+          res.setHeader('WWW-Authenticate', 'Payment realm="QuorixASP A2MCP"');
+          return res.status(402).json(challenge.body);
+        } catch (challengeErr: any) {
+          return res.status(503).json({
+            ok: false,
+            error: {
+              code: 'PAYMENT_GATE_MISCONFIGURED',
+              message: challengeErr.message || 'x402 challenge could not be built.',
+              hint: 'Set A2MCP_PAY_TO_WALLET to your ASP receiving wallet on X Layer.',
+            },
+          });
+        }
+      }
+
+      const result = await mcpServer.invokeTool(tool, toolArgs || {}, callerId, {
+        paymentAuthorization,
+      });
       const raw = result.content?.[0]?.text || '';
       const parsed = parseLegacyPayload(raw) as {
         ok?: boolean;
@@ -716,6 +748,10 @@ async function main() {
 
       // Agent-friendly envelope (preferred for AI callers)
       if (parsed && typeof parsed === 'object' && 'ok' in parsed) {
+        const errCode = (parsed.error as { code?: string } | undefined)?.code;
+        if (errCode === 'PAYMENT_REQUIRED') {
+          return res.status(402).json(parsed);
+        }
         return res.status(result.isError ? 422 : 200).json(parsed);
       }
 
