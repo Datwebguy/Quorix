@@ -8,7 +8,7 @@ SESSION_DIR="${DATA_DIR}/okx-cli-sessions/${SESSION_HASH}"
 
 export PATH="/root/.local/bin:/usr/local/bin:${PATH}"
 
-# ── Persistent volume layout ────────────────────────────────────────────────
+# Persistent volume layout
 mkdir -p "${DATA_DIR}/okx-cli-sessions" "${DATA_DIR}/codex" "${DATA_DIR}/okx-agent-task"
 ln -sfn "${DATA_DIR}/okx-cli-sessions" /tmp/okx-cli-sessions
 ln -sfn "${DATA_DIR}/codex" /root/.codex

@@ -32,7 +32,8 @@ RUN npm run build && npm prune --omit=dev
 
 COPY ecosystem.config.cjs ./
 COPY scripts/fly-entrypoint.sh /usr/local/bin/fly-entrypoint.sh
-RUN chmod +x /usr/local/bin/fly-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/fly-entrypoint.sh \
+  && chmod +x /usr/local/bin/fly-entrypoint.sh
 
 ENV NODE_ENV=production
 # Fly injects PORT=8080 at runtime; Express reads process.env.PORT (src/config/env.ts).
