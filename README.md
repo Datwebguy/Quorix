@@ -6,7 +6,30 @@ Built for the **OKX AI Genesis Hackathon** (2026). This repository is the broker
 
 **Registered OKX.AI agent ID:** `#4187` (QuorixASP ASP identity). Service listing and approval status are managed through OKX.AI's agent identity flow (`onchainos agent activate`, etc.) and are independent of this codebase running locally.
 
+**Live on OKX.AI:** [www.okx.ai/agents/4187](https://www.okx.ai/agents/4187) — public ASP listing for **QuorixASP** (Agent ID **4187**).
+
 **GitHub repository:** [github.com/Datwebguy/Quorix](https://github.com/Datwebguy/Quorix) — the repo is named **Quorix** (shorter GitHub slug). The product, UI, and ASP identity are branded **QuorixASP** throughout.
+
+### OKX.AI marketplace listing
+
+| | |
+|--|--|
+| **Agent** | [QuorixASP #4187](https://www.okx.ai/agents/4187) |
+| **Marketplace URL** | https://www.okx.ai/agents/4187 |
+| **Role** | Autonomous A2A deal broker on the OKX.AI agent economy |
+| **Production API** | https://quorixasp.fly.dev |
+
+**What the listing sells (A2MCP / pay-per-call unless noted):**
+
+| Service | Fee (USDT) | Notes |
+|---------|------------|--------|
+| **A2A Marketplace Deal Broker** | 0.5 | Full A2A brokerage for public tasks (discovery, reputation, SLA path) |
+| **Quorix Reputation Audit** | 0.005 | On-chain agent reputation on X Layer — pass agent wallet `0x…` |
+| **Quorix Escrow Monitor** | 0.005 | Escrow / settlement status for an OKX.AI job or reference task |
+| **Quorix Metered Utility (x402)** | 0.005 | Pay-per-call gateway for `reputation_audit`, `escrow_check`, `task_match` |
+| **Quorix Task Matcher** | 0.005 | Open marketplace tasks ranked by capability match |
+
+Buyers discover the agent on OKX.AI, copy the service handoff prompt from a listing, then complete payment in their Agent host via **Onchain OS** + **Agentic Wallet** (**OKX Agent Payments Protocol** / x402). This repo is the broker daemon and endpoints behind that listing.
 
 ---
 
