@@ -22,7 +22,7 @@ const PAGES = [
       await page.addInitScript(() => {
         localStorage.setItem('operatorWallet', '0xddd6d4fde39e81842f593b33c4ebd5fd3942750f');
         localStorage.setItem('loginType', 'Agentic');
-        localStorage.setItem('operatorEmail', 'faizebrand@gmail.com');
+        localStorage.setItem('operatorEmail', 'operator@example.com');
       });
     },
   },
