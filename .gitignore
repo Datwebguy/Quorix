@@ -23,9 +23,14 @@ build/
 **/.okx-agent-task/logs/
 **/.okx-agent-task/**/audit.jsonl
 
-# --- Dev scratch & probes (test emails, wallet fixtures) ---
+# --- Dev scratch & probes (test emails, wallet fixtures, payment signatures) ---
 scratch/
 .data/
+tmp-*.json
+tmp-*.txt
+tmp-*.ps1
+**/tmp-payment-sig*
+**/payment-ledger.jsonl
 
 # --- Logs ---
 *.log
